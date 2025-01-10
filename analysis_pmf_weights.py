@@ -8,6 +8,7 @@ from scipy.stats import gaussian_kde
 from analysis_pmf import pmf_type, type2color
 from mpl_toolkits import mplot3d
 from matplotlib.patches import ConnectionPatch
+from scipy.stats import sem
 
 contrasts_L = np.array([1., 0.987, 0.848, 0.555, 0.302, 0, 0, 0, 0, 0, 0])
 contrasts_R = np.array([1., 0.987, 0.848, 0.555, 0.302, 0, 0, 0, 0, 0, 0])[::-1]
@@ -159,7 +160,7 @@ def plot_compact(average, counter, title, show_first_and_last=False, show_weight
 
 def plot_compact_all(average_slow, counter_slow, average_sudden, counter_sudden, title, all_data_sudden=[], all_data_slow=[]):
     """Plot a whole bunch of changes"""
-    titles = ["Type 1", r'Type $1 \rightarrow 2$', "Type 2", r'Type $2 \rightarrow 3$', "Type 3"]
+    titles = ["Slow process\ntype 1", r'Type $1 \rightarrow 2$', "Slow process\ntype 2", r'Type $2 \rightarrow 3$', "Slow process\ntype 3"]
     f, axs = plt.subplots(1, 5, width_ratios=[1.1, 1, 1, 1, 1.1], figsize=(4 * 5, 8))
     average = np.zeros((average_slow.shape[0], average_slow.shape[1] + average_sudden.shape[1], 2))
     counter = np.zeros((counter_slow.shape[0], counter_slow.shape[1] + counter_sudden.shape[1]))
@@ -170,9 +171,25 @@ def plot_compact_all(average_slow, counter_slow, average_sudden, counter_sudden,
     counter[:, [1, 3]] = counter_sudden
     # all_data[:, [0, 2, 4]] = counter_slow # this won't just work...
     # all_data[:, [1, 3]] = counter_sudden
+    offset = 0.008
     for i in range(average.shape[1]):
         for j in range(n_weights + 1 + show_weight_augmentations):
-            axs[i].plot([0, 1], average[j, i] / counter[j, i], marker="o", color=local_weight_colours[j], label=local_ylabels[j])
+            axs[i].plot([0 + (2- j) * offset, 1 + (2- j) * offset], average[j, i] / counter[j, i], marker="o", color=local_weight_colours[j], label=local_ylabels[j])
+            if i == 0:
+                local_data = all_data_slow[j][0]
+            elif i == 2:
+                local_data = all_data_slow[j][1]
+            elif i == 4:
+                local_data = all_data_slow[j][2]
+            elif i == 1:
+                local_data = all_data_sudden[j][0]
+            elif i == 3:
+                local_data = all_data_sudden[j][1]
+
+            assert np.allclose(average[j, i] / counter[j, i], np.array([np.mean(local_data[0]), np.mean(local_data[1])]))
+            axs[i].plot([0 + (2- j) * offset, 0 + (2- j) * offset], [average[j, i][0] / counter[j, i] - sem(local_data[0]), average[j, i][0] / counter[j, i] + sem(local_data[0])], color=local_weight_colours[j])
+            axs[i].plot([1 + (2- j) * offset, 1 + (2- j) * offset], [average[j, i][1] / counter[j, i] - sem(local_data[1]), average[j, i][1] / counter[j, i] + sem(local_data[1])], color=local_weight_colours[j])
+            
             axs[i].set_ylim(-3.5, 3.5)
             axs[i].spines['top'].set_visible(False)
             axs[i].spines['right'].set_visible(False)
@@ -200,13 +217,13 @@ def plot_compact_all(average_slow, counter_slow, average_sudden, counter_sudden,
                     axs[i].plot([1.1], [np.mean(first_and_last_pmf[mask, 1, -1])], marker='*', color=local_weight_colours[j])
             axs[i].annotate("n={}".format(int(counter[0, i])), (0.06, 0.025), xycoords='axes fraction', size=26)
             if j == 0:
-                axs[i].set_title(titles[i], size=38)
+                axs[i].set_title(titles[i], size=34)
             if j == n_weights and i == 2:
                 axs[i].set_xlabel("Weight change", size=38)
     axs[0].legend(frameon=False, fontsize=17)
     plt.tight_layout()
     plt.savefig("./summary_figures/weight_changes/" + title + " augmented" * show_weight_augmentations, dpi=300)
-    plt.show()
+    plt.close()
 
 
 def plot_compact_split(all_datapoints, title, show_first_and_last=False, show_weight_augmentations=False, width_divisor=20):
@@ -319,25 +336,25 @@ def plot_histogram_diffs(all_datapoints, average, counter, x_lim_used_normal, x_
                 # axs[j, i * 2 + 1].yaxis.set_ticklabels([])
                 if show_first_and_last:
                     if j < n_weights - 1:
-                        axs[j, i * 2].plot([x_lim_used_normal / 8], [np.mean(first_and_last_pmf[:, 0, j])], marker='*', c='red')  # also plot weights of very first state average
+                        axs[j, i * 2].plot([x_lim_used_normal / 8], [np.mean(first_and_last_pmf[:, 0, j])], marker='*', c=local_weight_colours[j])  # also plot weights of very first state average
                     elif j == n_weights - 1:
                         mask = first_and_last_pmf[:, 0, -1] < 0
-                        axs[j, i * 2].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 0, -1])], marker='*', c='red')  # separete biases again
+                        axs[j, i * 2].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 0, -1])], marker='*', c=local_weight_colours[j])  # separete biases again
                     elif j == n_weights:
                         mask = first_and_last_pmf[:, 0, -1] > 0
-                        axs[j, i * 2].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 0, -1])], marker='*', c='red')
+                        axs[j, i * 2].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 0, -1])], marker='*', c=local_weight_colours[j])
             # else:
             #     axs[j, i * 2].yaxis.set_ticklabels([])
             #     axs[j, i * 2 + 1].yaxis.set_ticklabels([])
             if i == n_types - 1 and show_first_and_last:
                 if j < n_weights - 1:
-                    axs[j, i * 2 + 1].plot([x_lim_used_normal / 8], [np.mean(first_and_last_pmf[:, 1, j])], marker='*', c='red')  # also plot weights of very last state average
+                    axs[j, i * 2 + 1].plot([x_lim_used_normal / 8 * 7], [np.mean(first_and_last_pmf[:, 1, j]) - show_deltas * means[0]], marker='*', c=local_weight_colours[j])  # also plot weights of very last state average
                 elif j == n_weights - 1:
                     mask = first_and_last_pmf[:, 1, -1] < 0
-                    axs[j, i * 2 + 1].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 1, -1])], marker='*', c='red')  # separete biases again
+                    axs[j, i * 2 + 1].plot([x_lim_used_bias / 8 * 7], [np.mean(first_and_last_pmf[mask, 1, -1]) - show_deltas * means[0]], marker='*', c=local_weight_colours[j])  # separete biases again
                 elif j == n_weights:
                     mask = first_and_last_pmf[:, 1, -1] > 0
-                    axs[j, i * 2 + 1].plot([x_lim_used_bias / 8], [np.mean(first_and_last_pmf[mask, 1, -1])], marker='*', c='red')
+                    axs[j, i * 2 + 1].plot([x_lim_used_bias / 8 * 7], [np.mean(first_and_last_pmf[mask, 1, -1]) - show_deltas * means[0]], marker='*', c=local_weight_colours[j])
             if j == 0:
                 if 'sudden' in title:
                     axs[j, i * 2].set_title(r'Type ${} \rightarrow {}$'.format(i + 1, i + 2), loc='right', size=16, position=(1.45, 1))
@@ -550,17 +567,22 @@ if True:
             import scipy
             from itertools import product
             sig_counter, insig_counter = 0, 0
+            p_vals = []
             for i, j, k in product([3, 4], [0, 1], [0, 1, 2]):  # for weights 3 and 4, we compare over all combos of transitions
                 print()
                 print(j, i, k, i)
                 print(np.mean(np.abs(sudden_dists[(j, i)])), np.mean(np.abs(slow_dists[(k, i)])))
-                res = scipy.stats.mannwhitneyu(np.abs(sudden_dists[(j, i)]), np.abs(slow_dists[(k, i)]))
+                print(f"effect size {(np.mean(np.abs(sudden_dists[(j, i)])) - np.mean(np.abs(slow_dists[(k, i)]))) / np.std(np.abs(sudden_dists[(j, i)]))}")
+                res = scipy.stats.mannwhitneyu(np.abs(sudden_dists[(j, i)]), np.abs(slow_dists[(k, i)]), alternative='greater')
                 print(res)
+                p_vals.append(res.pvalue)
                 if res.pvalue < 0.05:
                     sig_counter += 1
                 else:
                     insig_counter += 1
             print(sig_counter, insig_counter)
+            print(p_vals)
+            # print(scipy.stats.false_discovery_control(p_vals))  # correction does not work in this environment, copied over
             quit()
 
 # all pmf weights
@@ -617,7 +639,7 @@ type1_rews, type2_rews, type3_rews = np.array(type1_rews), np.array(type2_rews),
 
 # reward rate and boundaries, figure 12
 fig = plt.figure(figsize=(13 * 3 / 5, 9 * 3 / 5))
-plt.hist(all_rews, bins=40, color='grey')
+plt.hist(all_rews, bins=45, color='grey')
 plt.axvline(0.6, c='k')
 plt.axvline(0.7827, c='k')
 
@@ -627,4 +649,4 @@ plt.gca().spines[['right', 'top']].set_visible(False)
 
 plt.tight_layout()
 plt.savefig(folder + "single hist" + " only first states" * only_first_states)
-plt.show()
+plt.close()
