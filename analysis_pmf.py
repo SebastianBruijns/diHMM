@@ -55,6 +55,7 @@ if __name__ == "__main__":
         type_2_counter += type_2_intro_present
     print("Out of {} mice, {} have a type 2 intro".format(len(all_first_pmfs_typeless), type_2_counter))
     # Out of 119 mice, 101 have a type 2 intro
+    # Out of 134 mice, 114 have a type 2 intro
 
     # All first PMFs
     # I had an issue where 0 contrasts were undefined for all PMFs, check that that's not the case
@@ -140,6 +141,10 @@ if __name__ == "__main__":
     axs[2].annotate("c", (offset_x, 1), weight='bold', fontsize=22)
     axs[3].annotate("d", (offset_x, 1), weight='bold', fontsize=22)
     axs[4].annotate("e", (offset_x, 1), weight='bold', fontsize=22)
+
+    axs[0].set_title("Type 1", size=label_size-2, color='green')
+    axs[2].set_title("Type 2", size=label_size-2, color='blue')
+    axs[4].set_title("Type 3", size=label_size-2, color='red')
 
     plt.tight_layout()
     plt.savefig("./summary_figures/" + save_title, dpi=300)
