@@ -1,3 +1,3 @@
-pypolyagamma
+pypolyagamma=1.2.3
 pybasicbayes @ git+https://github.com/SebastianBruijns/sab_pybasicbayes.git@working
 pyhsmm @ git+https://github.com/SebastianBruijns/sab_pyhsmm.git
