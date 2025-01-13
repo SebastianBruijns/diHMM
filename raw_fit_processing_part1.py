@@ -27,7 +27,7 @@ file_prefix = ['.', '/usr/src/app'][0]  # cluster or local prefix
 data_folder = 'dynamic_GLMiHMM_crossvals'
 prethinned = None
 
-subjects = ['DY_013']
+subjects = ['KS014']
 subjects = [subjects[int(sys.argv[1])]]
 
 thinning = 25  # MCMC chain thinning, drop all but every 25th sample

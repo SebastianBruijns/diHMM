@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 
 fit_variance = 0.04
-subjects = ["MFD_09"]
+subjects = ["KS014"]
 
 def create_mode_indices(test, subject, fit_type):
     """

@@ -1646,21 +1646,8 @@ if __name__ == "__main__":
     #     subject = result.group(1)
     #     subjects.append(subject)
 
-    subjects = ['MFD_09', 'PL037', 'MFD_08', 'UCLA035', 'CSH_ZAD_025', 'DY_011', 'KS052', 'SWC_052', 'UCLA049', 'NYU-37', 'ibl_witten_25', 'UCLA048', 'DY_010', 'CSHL054',
-                'CSH_ZAD_024', 'UCLA034', 'KS046', 'KS094', 'KS044', 'KS096', 'PL034', 'NR_0028', 'CSH_ZAD_026', 'NYU-48', 'UCLA036', 'SWC_038', 'KS051',
-                'ibl_witten_18', 'ibl_witten_27', 'ibl_witten_19', 'SWC_039', 'DY_013', 'CSHL_020', 'UCLA037', 'NR_0029', 'PL035', 'UCLA033', 'ZFM-01937', 'KS016',
-                'CSHL053', 'KS086', 'PL024', 'ZFM-01576', 'ZFM-02370', 'SWC_054', 'NYU-30', 'CSHL047', 'ZFM-01577', 'KS055', 'CSHL052', 'KS017', 'DY_016', 'PL030',
-                'ZFM-01936', 'CSH_ZAD_022', 'UCLA030', 'KS042', 'NYU-27', 'KS015', 'DY_014', 'NYU-65', 'ibl_witten_20', 'CSHL045', 'ZFM-02373', 'ZFM-02372', 'KS084',
-                'CSHL051', 'KS014', 'SWC_043', 'ZFM-01935', 'KS043', 'KS091', 'PL033', 'KS022', 'CSHL059', 'NR_0019', 'SWC_022', 'NYU-47', 'NR_0027', 'CSH_ZAD_029',
-                'ibl_witten_17', 'DY_008', 'SWC_060', 'ibl_witten_29', 'UCLA012', 'SWC_061', 'ibl_witten_16', 'DY_009', 'UCLA044', 'SWC_023', 'NYU-46',  'MFD_05',
-                'CSHL058', 'NYU-11', 'KS023', 'KS021', 'DY_020', 'ZFM-05236', 'SWC_021', 'MFD_07', 'ibl_witten_14', 'NYU-06', 'NR_0031',
-                'UCLA011', 'CSH_ZAD_001', 'ZFM-01592', 'CSHL_007', 'NYU-39', 'MFD_06', 'NYU-45', 'ZM_2245', 'UCLA005', 'UCLA052', 'PL050', 'NYU-12', 'ZFM-02369',
-                'NR_0021', 'ZM_2241', 'CSH_ZAD_011', 'SWC_066', 'UCLA014', 'PL016', 'PL017', 'ZM_1897', 'NR_0020', 'ZM_2240', 'NYU-40', 'ZFM-02368',
-                'CSHL060', 'KS019', 'DY_018', 'CSHL_015', 'CSHL049', 'UCLA017', 'PL015', 'ibl_witten_13', 'ZM_3003', 'CSHL_014', 'SWC_065']
-    # worked: 
-    
-    # no data attribute: 'MFD_09', 
-    # too big: 'UCLA006', 'NR_0024' 'UCLA015'
+    subjects = ['KS014']
+
     print(len(subjects))
     fit_variance = 0.04
     dur = 'yes'
@@ -1726,7 +1713,7 @@ if __name__ == "__main__":
 
     print("WARNING, not saving")
 
-    for subject in subjects[::2]:
+    for subject in subjects:
         if subject.startswith('GLM_Sim_') or subject.startswith('fip_') or subject in ['PL037', 'PL034', 'PL035', 'DY_010', 'SWC_065']:
         #     # ibl_witten_18 is a weird one, super good session in the middle, ending phase 1, never to re-appear, bad at the end
         #     # ZFM-05245 is neuromodulator mouse, never reaches ephys it seems... same for ZFM-04019
@@ -1826,41 +1813,41 @@ if __name__ == "__main__":
 
         # continue
 
-        try:
+        # try:
 
-            # n = test.results[0].n_sessions
-            # trial_counter = 0
-            # weight_collection = []
+        #     # n = test.results[0].n_sessions
+        #     # trial_counter = 0
+        #     # weight_collection = []
 
-            # for seq_num in range(n):
+        #     # for seq_num in range(n):
 
-            #     weight_collection.append(np.zeros(len(test.results[0].models[0].stateseqs[seq_num])))
+        #     #     weight_collection.append(np.zeros(len(test.results[0].models[0].stateseqs[seq_num])))
 
-            #     state_consistencies = {}  # save when which state is how certain, to later compare their responses
-            #     for state, trials in enumerate(state_sets):
+        #     #     state_consistencies = {}  # save when which state is how certain, to later compare their responses
+        #     #     for state, trials in enumerate(state_sets):
 
-            #         relevant_trials = trials[np.logical_and(trial_counter <= trials, trials < trial_counter + len(test.results[0].models[0].stateseqs[seq_num]))]
-            #         active_trials = np.zeros(len(test.results[0].models[0].stateseqs[seq_num]))
+        #     #         relevant_trials = trials[np.logical_and(trial_counter <= trials, trials < trial_counter + len(test.results[0].models[0].stateseqs[seq_num]))]
+        #     #         active_trials = np.zeros(len(test.results[0].models[0].stateseqs[seq_num]))
 
-            #         active_trials[relevant_trials - trial_counter] = np.sum(consistencies[tuple(np.meshgrid(relevant_trials, trials))], axis=0)
-            #         active_trials[relevant_trials - trial_counter] -= 1
-            #         active_trials[relevant_trials - trial_counter] = active_trials[relevant_trials - trial_counter] / (trials.shape[0] - 1)
+        #     #         active_trials[relevant_trials - trial_counter] = np.sum(consistencies[tuple(np.meshgrid(relevant_trials, trials))], axis=0)
+        #     #         active_trials[relevant_trials - trial_counter] -= 1
+        #     #         active_trials[relevant_trials - trial_counter] = active_trials[relevant_trials - trial_counter] / (trials.shape[0] - 1)
 
-            #         if active_trials.sum() > 0:
-            #             weight_collection[-1] += active_trials
+        #     #         if active_trials.sum() > 0:
+        #     #             weight_collection[-1] += active_trials
 
-            #     trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
+        #     #     trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
 
-            state_assistance = False
-            all_infos = predictive_check(test, mode_indices)
-            pickle.dump(all_infos, open("./pred_checks_8/all_infos_{}_weighted".format(subject, state_assistance), 'wb'))
-        except Exception as E:
-            print(E)
-            quit()
-            continue
-        continue
+        #     state_assistance = False
+        #     all_infos = predictive_check(test, mode_indices)
+        #     pickle.dump(all_infos, open("./pred_checks_8/all_infos_{}_weighted".format(subject, state_assistance), 'wb'))
+        # except Exception as E:
+        #     print(E)
+        #     quit()
+        #     continue
+        # continue
 
-        states, pmfs, pmf_weights, durs, state_types, contrast_intro_type, intros_by_type, undiv_intros, states_per_type, trial_ns = state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save=True, show=False, separate_pmf=1, type_coloring=True, dpi=300, save_append=str(fit_variance).replace('.', '_'))
+        states, pmfs, pmf_weights, durs, state_types, contrast_intro_type, intros_by_type, undiv_intros, states_per_type, trial_ns = state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save=True, show=True, separate_pmf=1, type_coloring=True, dpi=300, save_append=str(fit_variance).replace('.', '_'))
         # compare_pmfs(test, [0, 1], states, pmfs)
         
         try:
@@ -1963,7 +1950,6 @@ if __name__ == "__main__":
 
             model = ols('responses ~ C(states) + C(contrasts)', data=df).fit()
             print(sm.stats.anova_lm(model, typ=2))
-            quit()
 
         # lost session_contrasts somehow
         test.results[0].session_contrasts = [np.unique(cont_mapping(d[:, 0] - d[:, 1])) for d in test.results[0].data]
@@ -2084,7 +2070,7 @@ if __name__ == "__main__":
     print("Ultimate count is {}".format(ultimate_counter))
 
 
-    if True:
+    if False:
         abs_state_durs = pickle.load(open("multi_chain_saves/abs_state_durs.p", 'rb'))
         bias_sessions = pickle.load(open("multi_chain_saves/bias_sessions.p", 'rb'))
 

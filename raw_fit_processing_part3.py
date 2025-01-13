@@ -50,9 +50,9 @@ def state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices, consi
     
     # plot the ultimate result
     print('temp removal')
-    # state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save_append='_{}{}_fitvar_{}'.format(mode_prefix, plot_criterion, fit_variance), show=True, separate_pmf=True, type_coloring=True)
+    state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save_append='_{}{}_fitvar_{}'.format(mode_prefix, plot_criterion, fit_variance), show=True, separate_pmf=True, type_coloring=True)
 
-
+    return
     # code for visualising the consistency matrix and state assignments
     fig, ax = plt.subplots(ncols=5, sharey=True, gridspec_kw={'width_ratios': [10, 1, 1, 1, 1]}, figsize=(13, 8))
     from matplotlib.pyplot import cm
