@@ -42,9 +42,9 @@ The following 3 scripts process the MCMC-chains. They are split, because we usua
 ``raw_fit_processing_part2.py``  \
 ``raw_fit_processing_part3.py`` specify argument (0 for a single mouse)
 
-These will produce, in sequence, the following intermediate files: \
-- ``canonical_[infos/result]_[subject]_prebias_var_0_04`` files \
-- updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode_indices_[subject]_prebias_var_0_04`` files \
+These will produce, in sequence, the following intermediate files:
+- ``canonical_[infos/result]_[subject]_prebias_var_0_04`` files
+- updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode_indices_[subject]_prebias_var_0_04`` files
 - ``state_sets_[subject]_prebias_var_0_04.p`` and ``mode_consistencies_[subject]_prebias_var_0_04.p`` files
 
 
