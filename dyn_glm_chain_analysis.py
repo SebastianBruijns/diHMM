@@ -922,7 +922,7 @@ def state_development(test, state_sets, indices, save=True, save_append='', show
     # test.state_mapping = dict(zip(range(len(state_sets)), np.argsort(np.argsort(pmfs_to_score))))  # double argsort for ranks
     test.state_mapping = dict(zip(np.flip(np.argsort((states_by_session != 0).argmax(axis=1))), range(len(state_sets))))
     print(test.state_mapping)
-    if subject == "KS014":
+    if test.results[0].name == "KS014":  # some of the states appear on the same session but are misordered
         test.state_mapping[4] = 5
         test.state_mapping[1] = 4
         test.state_mapping[3] = 2
@@ -1886,7 +1886,7 @@ if __name__ == "__main__":
         # pickle.dump(session_dict, open("sofiya_data/session_dict_{}".format(subject), 'wb'))
 
         # Test KS014's session number 12 for difference between state 5 and 6
-        if subject == 'KS014' and True:
+        if subject == 'KS014' and False:
 
             # dur dist plotting - maybe I shouldn't average over parameters?
             # from scipy.stats import nbinom
@@ -1950,6 +1950,7 @@ if __name__ == "__main__":
 
             model = ols('responses ~ C(states) + C(contrasts)', data=df).fit()
             print(sm.stats.anova_lm(model, typ=2))
+            quit()
 
         # lost session_contrasts somehow
         test.results[0].session_contrasts = [np.unique(cont_mapping(d[:, 0] - d[:, 1])) for d in test.results[0].data]
