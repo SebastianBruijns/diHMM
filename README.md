@@ -34,7 +34,7 @@ The data for this analysis is downloaded with the script (note that you will nee
 
 ## Running
 
-``dynamic_GLMiHMM_fit.py`` fits the diHMM model to the specified subjects (depending on the data size this can take a substantial amount of time, for our example mouse it takes about 24 hours, running on 16 cores in parallel) -> produces `[subject_name]_fittype_prebias_var_0_04_[seed]_[id] files and a fit_info dictionary containing the fit settings
+``dynamic_GLMiHMM_fit.py`` fits the diHMM model to the specified subjects (depending on the data size this can take a substantial amount of time, for our example mouse it takes about 24 hours, running on 16 cores in parallel) -> produces `[subject_name]_fittype_prebias_var_0_04_[seed]_[id]` files and a fit_info dictionary containing the fit settings
 Supply this script with the number of the chain as an argument, i.e. for a typical run these are the numbers 0-15
 
 The following 3 scripts process the MCMC-chains. They are split, because we usually run 1 and 3 on a cluster, as they are computationally somewhat intense, but 2, where one selects the samples to analyse, is run locally to view and interact with the results (the first and third script still run within around 1 hour on a desktop machine, script two runs in less than 5 minutes).\
