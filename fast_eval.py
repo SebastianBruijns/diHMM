@@ -5,8 +5,7 @@ import json
 from tqdm import tqdm
 import shutil
 
-folder = "./dynamic_GLMiHMM_crossvals/infos/"
-doubles = "./dynamic_GLMiHMM_crossvals/infos_extra/"
+folder = "./dynamic_GLMiHMM_crossvals/infos_32/"
 
 # Define conditions
 condition_names = [
@@ -72,7 +71,7 @@ subject_names = ['CSHL045', 'CSHL047', 'CSHL049', 'CSHL051', 'CSHL052', 'CSHL053
            'ibl_witten_13', 'ibl_witten_14', 'ibl_witten_16', 'ibl_witten_17', 'ibl_witten_18', 'ibl_witten_19', 'ibl_witten_20', 'ibl_witten_25', 'ibl_witten_26',
            'ibl_witten_27', 'ibl_witten_29', 'ibl_witten_32']
 
-subjects_and_nums = [(subject, num) for subject in subject_names for num in range(2)]
+subjects_and_nums = [(subject, num) for subject in subject_names for num in range(4)]
 
 condition_subs = {i: subjects_and_nums.copy() for i in range(len(condition_names))}
 
@@ -136,129 +135,43 @@ subjects = {i: [] for i in range(len(conditions))}
 # Process files
 non_cross_vals = []
 
-compare = [32, 39, 40, 37, 38, 12]
-compare_res = [np.zeros(308), np.zeros(308), np.zeros(308), np.zeros(308), np.zeros(308), np.zeros(308)]
+compare = [32]
+compare_res = [np.zeros(616)]
 
-for fol in [folder, doubles]:
-    for file in tqdm(os.listdir(fol)):
+fol = folder
+for file in tqdm(os.listdir(fol)):
 
-        infos = json.load(open(fol + file, 'r'))
-        subject = infos['subject']
-        if not infos['cross_val']:
-            non_cross_vals.append(file)
-            continue
-        if infos['n_samples'] == 10:
-            continue
-        assert infos['n_samples'] in [12000, 10000]
-        # if subject == "KS014":
-        #     print(file)
+    infos = json.load(open(fol + file, 'r'))
+    subject = infos['subject']
+    if not infos['cross_val']:
+        non_cross_vals.append(file)
+        continue
+    if infos['n_samples'] == 10:
+        continue
+    assert infos['n_samples'] in [12000, 10000]
+    # if subject == "KS014":
+    #     print(file)
 
-        if infos['cross_val_type'] == 'lenca':
-            os.rename(fol + file, "./dynamic_GLMiHMM_crossvals/infos_lenca/" + file)
-            continue
+    if infos['cross_val_type'] == 'lenca':
+        os.rename(fol + file, "./dynamic_GLMiHMM_crossvals/infos_lenca/" + file)
+        continue
 
-        if infos['cross_val_num'] not in [0, 1]:
-            continue
+    if infos['cross_val_num'] not in [0, 1, 2, 3]:
+        continue
 
-        for i, condition in enumerate(conditions):
-            if conditions[i](infos):
-                if subject in subjects[i] and np.mean(infos['cross_val_preds'][-4000:]) in cvlls[i]:
-                    # print(file)
-                    os.rename(fol + file, "./dynamic_GLMiHMM_crossvals/infos_error/" + file)
-                    break
-                else:
-                    if i == 32:
-                        shutil.copy(fol + file, "./dynamic_GLMiHMM_crossvals/infos_32/" + file)
-                    if (subject, infos['cross_val_num']) not in condition_subs[i]:
-                        os.rename(fol + file, "./dynamic_GLMiHMM_crossvals/infos_exists_with_different_cross_val/" + file)
-                    else:
-                        cvlls[i].append(np.mean(infos['cross_val_preds'][-4000:]))
-                        full_cvlls[i].append(np.convolve(infos['cross_val_preds'], np.ones(4000)/4000, mode='valid'))
-                        subjects[i].append(subject)
-                        condition_subs[i].remove((subject, infos['cross_val_num']))
+    for i, condition in enumerate(conditions):
+        if conditions[i](infos):
 
-                        if i in compare:
-                            compare_res[compare.index(i)][subjects_and_nums.index((subject, infos['cross_val_num']))] += np.mean(infos['cross_val_preds'][-4000:])
-                    break
+            cvlls[i].append(np.mean(infos['cross_val_preds'][-4000:]))
+            full_cvlls[i].append(np.convolve(infos['cross_val_preds'], np.ones(4000)/4000, mode='valid'))
+            subjects[i].append(subject)
+            condition_subs[i].remove((subject, infos['cross_val_num']))
 
-        else:
-            print("fits no schema: " + infos['file_name'])
-            quit()
+            if i in compare:
+                compare_res[compare.index(i)][subjects_and_nums.index((subject, infos['cross_val_num']))] += np.mean(infos['cross_val_preds'][-4000:])
+            break
 
-# Plot boxplots
-plt.figure(figsize=(16, 8))
-labels = [f"{cond['variance']} var {cond['path'].split('/')[-2]}" for cond in condition_names]
-plt.boxplot([100 * np.exp(cvlls[i]) for i in range(len(conditions))], labels=labels)
-plt.ylabel("Exponentiated log likelihood on heldout", fontsize=16)
-plt.xticks(range(1, len(conditions) + 1), labels)
-plt.savefig("boxplot.png")
-plt.close()
+    else:
+        print("fits no schema: " + infos['file_name'])
+        quit()
 
-from scipy.stats import sem
-
-print([len(cvlls[x]) for x in cvlls])
-
-def comp_perfs(a, b, second_model):
-    mask = np.logical_and(a != 0, b != 0)
-
-    plt.figure(figsize=(16, 9))
-    plt.scatter(a[mask], b[mask])
-    plt.plot([a[mask].min(), a[mask].max()], [a[mask].min(), a[mask].max()], 'k')
-    plt.xlabel("best model cvll", fontsize=22)
-    plt.ylabel(second_model, fontsize=22)
-
-plt.close()
-
-# comp_perfs(compare_res[0], compare_res[1], "decay=0.2")
-# plt.tight_layout()
-# plt.savefig("comp_1")
-# plt.show()
-
-# comp_perfs(compare_res[0], compare_res[2], "decay=0.3")
-# plt.tight_layout()
-# plt.savefig("comp_2")
-# plt.close()
-
-# comp_perfs(compare_res[0], compare_res[3], "var=0.06")
-# plt.tight_layout()
-# plt.savefig("comp_3")
-# plt.close()
-
-# comp_perfs(compare_res[0], compare_res[4], "var=0.03")
-# plt.tight_layout()
-# plt.savefig("comp_4")
-# plt.close()
-
-# plot lines of the different means
-plt.figure(figsize=(16, 8))
-vals = []
-for i, label in enumerate(labels):
-    plt.errorbar(i, np.mean(cvlls[i]), yerr=sem(cvlls[i]) / 2, fmt='o', label=label)
-    vals.append(np.mean(cvlls[i]))
-    print(i, label, np.mean(cvlls[i]))
-plt.ylabel("Exponentiated log likelihood on heldout", fontsize=16)
-# plt.ylim(np.sort(vals)[-2] - 0.006, np.sort(vals)[-2] + 0.001)
-plt.xticks(range(len(conditions)), labels, rotation=45)
-plt.savefig("means.png")
-plt.show()
-
-# some filled up arrays only go to 10000
-full_cvlls = {x: np.array([full_cvlls[x]]).mean(0) for x in full_cvlls}
-
-for i, label in enumerate(labels):
-    plt.plot(full_cvlls[i], label=label)
-plt.legend()
-plt.savefig("temp.png")
-plt.close()
-
-quit()
-
-# Plot histograms
-for i, label in enumerate(labels):
-    plt.hist(np.exp(cvlls[i]), bins=np.linspace(0.5, 1), alpha=0.3, label=label)
-
-for i, label in enumerate(labels):
-    plt.axvline(np.mean(np.exp(cvlls[i])), label=f'{label} mean')
-
-plt.legend()
-plt.show()

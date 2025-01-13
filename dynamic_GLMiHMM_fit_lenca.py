@@ -40,19 +40,23 @@ subjects = ['CSHL045', 'CSHL047', 'CSHL049', 'CSHL051', 'CSHL052', 'CSHL053', 'C
            'CSHL_020', 'CSH_ZAD_001', 'CSH_ZAD_011', 'CSH_ZAD_017', 'CSH_ZAD_019', 'CSH_ZAD_022', 'CSH_ZAD_024', 'CSH_ZAD_025', 'CSH_ZAD_026', 'CSH_ZAD_029', 'DY_008',
            'DY_009', 'DY_010', 'DY_011', 'DY_013', 'DY_014', 'DY_016', 'DY_018', 'DY_020', 'KS014', 'KS015', 'KS016', 'KS017', 'KS019', 'KS021', 'KS022', 'KS023',
            'KS042', 'KS043', 'KS044', 'KS045', 'KS046', 'KS051', 'KS052', 'KS055', 'KS084', 'KS086', 'KS091', 'KS094', 'KS096', 'MFD_05', 'MFD_06', 'MFD_07', 'MFD_08',
-           'MFD_09', 'NR_0017', 'NR_0019', 'NR_0020', 'NR_0021', 'NR_0024', 'NR_0027', 'NR_0028', 'NR_0029', 'NR_0031', 'NYU-06', 'NYU-11', 'NYU-12', 'NYU-21', 'NYU-27',
+           'MFD_09', 'NR_0017', 'NR_0019', 'NR_0020', 'NR_0021', 'NR_0024', 'NR_0027', 'NR_0028', 'NR_0029', 'NR_0031', 'NYU-06', 'NYU-11', 'NYU-12', 'NYU-27',
            'NYU-30', 'NYU-37', 'NYU-39', 'NYU-40', 'NYU-45', 'NYU-46', 'NYU-47', 'NYU-48', 'NYU-65', 'PL015', 'PL016', 'PL017', 'PL024', 'PL030', 'PL031', 'PL033',
            'PL034', 'PL035', 'PL037', 'PL050', 'SWC_021', 'SWC_022', 'SWC_023', 'SWC_038', 'SWC_039', 'SWC_042', 'SWC_043', 'SWC_052', 'SWC_053', 'SWC_054', 'SWC_058',
            'SWC_060', 'SWC_061', 'SWC_065', 'SWC_066', 'UCLA005', 'UCLA006', 'UCLA011', 'UCLA012', 'UCLA014', 'UCLA015', 'UCLA017', 'UCLA030', 'UCLA033', 'UCLA034',
            'UCLA035', 'UCLA036', 'UCLA037', 'UCLA044', 'UCLA048', 'UCLA049', 'UCLA052', 'ZFM-01576', 'ZFM-01577', 'ZFM-01592', 'ZFM-01935', 'ZFM-01936', 'ZFM-01937',
-           'ZFM-02368', 'ZFM-02369', 'ZFM-02370', 'ZFM-02372', 'ZFM-02373', 'ZFM-04308', 'ZFM-05236', 'ZM_1897', 'ZM_1898', 'ZM_2240', 'ZM_2241', 'ZM_2245', 'ZM_3003',
+           'ZFM-02368', 'ZFM-02369', 'ZFM-02370', 'ZFM-02372', 'ZFM-02373', 'ZFM-05236', 'ZM_1897', 'ZM_1898', 'ZM_2240', 'ZM_2241', 'ZM_2245', 'ZM_3003',
            'ibl_witten_13', 'ibl_witten_14', 'ibl_witten_16', 'ibl_witten_17', 'ibl_witten_18', 'ibl_witten_19', 'ibl_witten_20', 'ibl_witten_25', 'ibl_witten_26',
            'ibl_witten_27', 'ibl_witten_29', 'ibl_witten_32']
 
+# subjects = ['KS014']
+subjects = ['NYU-07', 'NYU-12', 'CSHL_003', 'NYU-13', 'CSHL_015', 'NYU-04', 'ibl_witten_13', 'ibl_witten_06', 'ibl_witten_12', 'CSHL_014', 'CSHL_010', 'ibl_witten_16', 'CSHL_005', 'CSHL_004', 'NYU-02', 'ibl_witten_15', 'ibl_witten_14', 'CSHL_012', 'IBL-T1', 'IBL-T3', 'IBL-T2', 'NYU-09', 'CSHL_008']
+
 num_subjects = len(subjects)
-subjects = [a for a in subjects for i in range(2)] # how often is subject needed, i.e. number of chains or cross-validation folds or seeds for chains
-seeds = [101] * num_subjects
-cv_nums = [1] * num_subjects
+subjects = [a for a in subjects for i in range(5)] # how often is subject needed, i.e. number of chains or cross-validation folds or seeds for chains
+seeds = [100, 101, 102, 103, 104] * num_subjects
+cv_nums = [0, 1, 2, 3, 4] * num_subjects
+
 
 seeds = [seeds[int(sys.argv[1])]]
 cv_nums = [cv_nums[int(sys.argv[1])]]
@@ -65,45 +69,39 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
     params = {}  # save parameters in a dictionary to save later
     params['subject'] = subject
     params['cross_val_num'] = cv_num
-    params['fit_variance'] = 0.03
+    params['fit_variance'] = 0.04
     params['jumplimit'] = 1
     params['seed'] = seed
 
-    params['file_name'] = file_prefix + "/summarised_sessions/0_3/{}_prebias_fit_info.csv".format(subject)
+    params['file_name'] = file_prefix + "/summarised_sessions_lenca/0_25/{}_prebias_fit_info.csv".format(subject)
     data = pd.read_csv(params['file_name'])
     # save column names
     params['regressors'] = list(data)
 
     # more obscure params:
-    params['gamma'] = 0.005
-    params['alpha'] = 1
-    if params['gamma'] is not None:
-        print("_______________________")
-        print("Warning, gamma is fixed")
-        print("_______________________")
-    params['gamma_a_0'] = 0.001
-    params['gamma_b_0'] = 1000
+    params['gamma_a_0'] = 0.01
+    params['gamma_b_0'] = 100
     params['init_var'] = 8
     params['init_mean'] = np.zeros(data.shape[1] - 2)
 
     r_support = np.arange(5, 705, 4)
     params['dur_params'] = dict(r_support=r_support,
                                 r_probs=np.ones(len(r_support))/len(r_support), alpha_0=1, beta_0=1)
-    params['alpha_a_0'] = 0.1
-    params['alpha_b_0'] = 10
+    params['alpha_a_0'] = 0.01
+    params['alpha_b_0'] = 100
     params['init_state_concentration'] = 3
 
-    params['dur'] = 'no'
+    params['dur'] = 'yes'
 
     params['cross_val'] = True
-    params['cross_val_type'] = ['normal', 'lenca'][0]
+    params['cross_val_type'] = ['normal', 'lenca'][1]
     params['cross_val_fold'] = 10
     params['CROSS_VAL_SEED'] = 4  # Do not change this, it's 4
 
     params['n_states'] = 15
-    params['n_samples'] = 48000
+    params['n_samples'] = 60000
     if params['cross_val']:
-        params['n_samples'] = 12000
+        params['n_samples'] = 100
     if params['subject'].startswith("GLM_Sim"):
         print("reduced sample size")
         params['n_samples'] = 48000
@@ -112,7 +110,7 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
 
     # find a unique identifier to save this fit
     while True:
-        folder = file_prefix + "/dynamic_GLMiHMM_crossvals/"
+        folder = file_prefix + "/dynamic_GLMiHMM_crossvals_2/"
         rand_id = np.random.randint(1000)
         if params['cross_val']:
             id = "{}_crossval_{}_{}_var_{}_{}".format(params['subject'], params['cross_val_num'],
@@ -123,7 +121,7 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
         if not os.path.isfile(folder + id + '_0.p'):
             break
     # create placeholder dataset for rand_id purposes
-    # pickle.dump(params, open(folder + id + '_0.p', 'wb'))
+    pickle.dump(params, open(folder + id + '_0.p', 'wb'))
 
     print(id)
     np.random.seed(params['seed'])
@@ -141,38 +139,21 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
     dur_distns = [distributions.NegativeBinomialIntegerR2Duration(**params['dur_params']) for state in range(params['n_states'])]
 
     if params['dur'] == 'yes':
-        if params['gamma'] is None:
-            posteriormodel = pyhsmm.models.WeakLimitHDPHSMM(
-                    # https://math.stackexchange.com/questions/449234/vague-gamma-prior
-                    alpha_a_0=params['alpha_a_0'], alpha_b_0=params['alpha_b_0'],  # gamma steers state number
-                    gamma_a_0=params['gamma_a_0'], gamma_b_0=params['gamma_b_0'],
-                    init_state_concentration=params['init_state_concentration'],
-                    obs_distns=obs_distns,
-                    dur_distns=dur_distns,
-                    var_prior=params['fit_variance'])
-        else:
-            posteriormodel = pyhsmm.models.WeakLimitHDPHSMM(
-                    alpha=params['alpha'],
-                    gamma=params['gamma'],
-                    init_state_concentration=params['init_state_concentration'],
-                    obs_distns=obs_distns,
-                    dur_distns=dur_distns,
-                    var_prior=params['fit_variance'])
+        posteriormodel = pyhsmm.models.WeakLimitHDPHSMM(
+                # https://math.stackexchange.com/questions/449234/vague-gamma-prior
+                alpha_a_0=params['alpha_a_0'], alpha_b_0=params['alpha_b_0'],  # gamma steers state number
+                gamma_a_0=params['gamma_a_0'], gamma_b_0=params['gamma_b_0'],
+                init_state_concentration=params['init_state_concentration'],
+                obs_distns=obs_distns,
+                dur_distns=dur_distns,
+                var_prior=params['fit_variance'])
     else:
-        if params['gamma'] is None:
-            posteriormodel = pyhsmm.models.WeakLimitHDPHMM(
-                    alpha_a_0=params['alpha_a_0'], alpha_b_0=params['alpha_b_0'],
-                    gamma_a_0=params['gamma_a_0'], gamma_b_0=params['gamma_b_0'],
-                    init_state_concentration=params['init_state_concentration'],
-                    obs_distns=obs_distns,
-                    var_prior=params['fit_variance'])
-        else:
-            posteriormodel = pyhsmm.models.WeakLimitHDPHMM(
-                    alpha=params['alpha'],
-                    gamma=params['gamma'],
-                    init_state_concentration=params['init_state_concentration'],
-                    obs_distns=obs_distns,
-                    var_prior=params['fit_variance'])
+        posteriormodel = pyhsmm.models.WeakLimitHDPHMM(
+                alpha_a_0=params['alpha_a_0'], alpha_b_0=params['alpha_b_0'],
+                gamma_a_0=params['gamma_a_0'], gamma_b_0=params['gamma_b_0'],
+                init_state_concentration=params['init_state_concentration'],
+                obs_distns=obs_distns,
+                var_prior=params['fit_variance'])
 
     # ingest data, possibly setting up cross-validation
     if params['cross_val']:
@@ -193,7 +174,7 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
             elif params['cross_val_type'] == 'lenca':
                 lenca_info = np.load(file_prefix + "/lenca_data/" + "{}_data_and_indices_CV_5_folds.npz".format(params['subject']))
                 trials_to_nan = lenca_info['presentTest'][params['cross_val_num']][lenca_counter:lenca_counter + session_data.shape[0]]
-                assert trials_to_nan.shape[0] == (lenca_info['sessInd'][j+1] - lenca_info['sessInd'][j])
+                assert trials_to_nan.shape[0] == (lenca_info['sessInd'][session+1] - lenca_info['sessInd'][session])
                 lenca_counter += session_data.shape[0]
                 session_data[trials_to_nan.astype(bool), -1] = None
             else:
@@ -211,7 +192,7 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
         warnings.simplefilter("ignore")
         for j in range(params['n_samples']):
 
-            if j % 400 == 0 or j == 3:
+            if j % 40 == 0 or j == 3:
                 print(j)
 
             posteriormodel.resample_model()
@@ -226,25 +207,23 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
                     model_save.delete_dur_data()
             models.append(model_save)
 
-            print(likes[j], np.mean(np.exp(eval_cross_val(models[-1:], copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))))
-
-            cross_val_lls.append(eval_cross_val(models, copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))
             # save unfinished results
-            # if j % 2000 == 0 and j > 0:
-            #     if params['n_samples'] <= 4000:
-            #         pickle.dump(models, open(folder + id + '.p', 'wb'))
-            #     else:
-            #         pickle.dump(models, open(folder + id + '_{}.p'.format(j // 4001), 'wb'))
-            #         if j % 4000 == 0:
-            #             cross_val_lls = np.append(cross_val_lls, eval_cross_val(models, copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))
-            #             models = []
+            if j % 20 == 0 and j > 0:
+                if params['n_samples'] <= 40:
+                    pickle.dump(models, open(folder + id + '.p', 'wb'))
+                else:
+                    pickle.dump(models, open(folder + id + '_{}.p'.format(j // 4001), 'wb'))
+                    if j % 40 == 0:
+                        cross_val_lls.append(eval_cross_val(models, copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))
+                        models = []
     print(time.time() - time_save)
 
     # save info
     if params['cross_val']:
-        cross_val_lls = np.append(cross_val_lls, eval_cross_val(models, copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))
-        lls_mean = np.mean(cross_val_lls[-1000:])
-        params['cross_val_preds'] = cross_val_lls.tolist()
+        cross_val_lls.append(eval_cross_val(models, copy.deepcopy(posteriormodel.datas), data_save, n_all_states=params['n_states']))
+        cross_val_lls = np.concatenate(cross_val_lls)
+        lls_mean = np.mean(cross_val_lls[-10:])
+        params['cross_val_preds'] = [x.tolist() for x in cross_val_lls]
 
     print(id)
     params['dur_params']['r_support'] = params['dur_params']['r_support'].tolist()
@@ -253,7 +232,7 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
     params['init_mean'] = params['init_mean'].tolist()
     if params['cross_val']:
         json.dump(params, open(folder + "infos/" + '{}_{}_cvll_{}_{}_{}_{}.json'.format(params['subject'], params['cross_val_num'], str(np.round(lls_mean, 3)).replace('.', '_'),
-                                                                                        params['fit_variance'], params['seed'], rand_id), 'w'))
+                                                                                               params['fit_variance'], params['seed'], rand_id), 'w'))
     else:
         json.dump(params, open(folder + "infos/" + '{}_{}_{}_{}.json'.format(params['subject'], params['fit_variance'], params['seed'], rand_id), 'w'))
     pickle.dump(models, open(folder + id + '_{}.p'.format(j // 4001), 'wb'))

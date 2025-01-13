@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyhsmm
 import pickle
-#import seaborn as sns
+import seaborn as sns
 import sys
 from scipy.stats import norm
 from scipy.optimize import minimize
@@ -172,7 +172,7 @@ class MCMC_result_list:
             plt.colorbar()
             plt.tight_layout()
             plt.savefig(file_prefix + "/dynamic_GLM_figures/" + mode_prefix + "consistency_matrix_{}.png".format(self.results[0].save_id))
-            plt.show()
+            # plt.show()
             plt.close()
         return consistency_mat
 
@@ -534,6 +534,9 @@ def sudden_state_changes(test, state_sets, consistencies, pmf_weights, pmfs):
                         session_time_at_sudden_change[0].append(first_trial / len(test.results[0].models[0].stateseqs[seq_num]))
                         changes_across_types[0].append((contender[:-1], augment_weights(pmf_weights[state][0])[:-1]))
                         aug_changes_across_types[0].append((contender[-1], augment_weights(pmf_weights[state][0])[-1]))
+
+                        print("Type 1 to 2")
+                        print(len(state_sets) - test.state_mapping[state])
                         for existing_state in state_pmfs:
                             type_1_to_2[0].append(weights_to_pmf(state_pmfs[existing_state]))
                         type_1_to_2[1].append(weights_to_pmf(pmf_weights[state][0]))
@@ -560,6 +563,37 @@ def sudden_state_changes(test, state_sets, consistencies, pmf_weights, pmfs):
 
     return changes, changes_across_types, aug_changes, aug_changes_across_types, in_sess_appear_dist, in_train_appear_dist, in_sess_appear_dist_old, in_train_appear_dist_old, type_1_to_2, session_time_at_sudden_change
 
+def extrapolate_belief_strength(test, consistencies):
+    n = test.results[0].n_sessions
+    trial_counter = 0
+
+    belief_sums = []
+    for seq_num in range(n):
+
+        state_consistencies = {}  # save when which state is how certain, to later compare their responses
+        for state, trials in enumerate(state_sets):
+
+            relevant_trials = trials[np.logical_and(trial_counter <= trials, trials < trial_counter + len(test.results[0].models[0].stateseqs[seq_num]))]
+            active_trials = np.zeros(len(test.results[0].models[0].stateseqs[seq_num]))
+
+
+            active_trials[relevant_trials - trial_counter] = np.sum(consistencies[tuple(np.meshgrid(relevant_trials, trials))], axis=0)
+            active_trials[relevant_trials - trial_counter] -= 1
+            active_trials[relevant_trials - trial_counter] = active_trials[relevant_trials - trial_counter] / (trials.shape[0] - 1)
+
+
+            if active_trials.sum() > 0:
+                state_consistencies[state] = active_trials
+
+        trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
+
+        b_sum = np.zeros(100)
+        for key in state_consistencies:
+            b_sum += np.interp(np.linspace(0, len(test.results[0].models[0].stateseqs[seq_num]), 100), np.arange(len(test.results[0].models[0].stateseqs[seq_num])), state_consistencies[key])
+        belief_sums.append(b_sum)
+
+    return belief_sums
+
 
 def contrasts_plot(test, state_sets, subject, save=False, show=False, dpi='figure', save_append='', consistencies=None, CMF=False):
     n = test.results[0].n_sessions
@@ -572,9 +606,9 @@ def contrasts_plot(test, state_sets, subject, save=False, show=False, dpi='figur
     total = 0
 
     for seq_num in range(n):
-        # if seq_num + 1 != 12:
-        #     trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
-        #     continue
+        if seq_num + 1 != 12:
+            trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
+            continue
         c_n_a = test.results[0].data[seq_num]
 
         plt.figure(figsize=(18, 9))
@@ -611,20 +645,20 @@ def contrasts_plot(test, state_sets, subject, save=False, show=False, dpi='figur
 
         cnas.append(c_n_a)
 
-        mask = c_n_a[:, -1] == 0
-        if mask.sum() > 0:
-            plt.plot(np.where(mask)[0], 0.5 + 0.25 * (all_conts[cont_mapping(- c_n_a[mask, 0] + c_n_a[mask, 1])]), 'o', c='b', ms=ms, label='Leftward', alpha=0.6)
-
         mask = c_n_a[:, -1] == 1
         if mask.sum() > 0:
-            plt.plot(np.where(mask)[0], 0.5 + 0.25 * (all_conts[cont_mapping(- c_n_a[mask, 0] + c_n_a[mask, 1])]), 'o', c='r', ms=ms, label='Rightward', alpha=0.6)
+            plt.plot(np.where(mask)[0], 0.5 + 0.25 * (all_conts[cont_mapping(c_n_a[mask, 0] - c_n_a[mask, 1])]), 'o', c='b', ms=ms, label='Leftward', alpha=0.6)
+
+        mask = c_n_a[:, -1] == 0
+        if mask.sum() > 0:
+            plt.plot(np.where(mask)[0], 0.5 + 0.25 * (all_conts[cont_mapping(c_n_a[mask, 0] - c_n_a[mask, 1])]), 'o', c='r', ms=ms, label='Rightward', alpha=0.6)
 
 
-        # for trial in range(250, 450):
-        #     if state_consistencies[5][trial] > 0.5 and all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])] < 0 and c_n_a[trial, -1] == 1:
-        #         plt.gca().annotate("", xytext=(trial - 2, 0.468 + 0.25 * (all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])])), xy=(trial - 0.25, 0.493 + 0.25 * (all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])])), xycoords='data', arrowprops=dict(facecolor='black', headwidth=7.5, headlength=7.5, width=2))
-        #     if state_consistencies[6][trial] > 0.5 and all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])] > 0 and c_n_a[trial, -1] == 0:
-        #         plt.gca().annotate("", xytext=(trial - 2, 0.468 + 0.25 * (all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])])), xy=(trial - 0.25, 0.493 + 0.25 * (all_conts[cont_mapping(- c_n_a[trial, 0] + c_n_a[trial, 1])])), xycoords='data', arrowprops=dict(facecolor='black', headwidth=7.5, headlength=7.5, width=2))
+        for trial in range(250, 450):
+            if state_consistencies[4][trial] > 0.5 and all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])] > 0 and c_n_a[trial, -1] == 1:
+                plt.gca().annotate("", xytext=(trial - 2, 0.468 + 0.25 * (all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])])), xy=(trial - 0.25, 0.493 + 0.25 * (all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])])), xycoords='data', arrowprops=dict(facecolor='black', headwidth=7.5, headlength=7.5, width=2))
+            if state_consistencies[6][trial] > 0.5 and all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])] < 0 and c_n_a[trial, -1] == 0:
+                plt.gca().annotate("", xytext=(trial - 2, 0.468 + 0.25 * (all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])])), xy=(trial - 0.25, 0.493 + 0.25 * (all_conts[cont_mapping(c_n_a[trial, 0] - c_n_a[trial, 1])])), xycoords='data', arrowprops=dict(facecolor='black', headwidth=7.5, headlength=7.5, width=2))
 
 
         plt.title("session #{} / {}".format(1+seq_num, test.results[0].n_sessions), size=36)
@@ -648,7 +682,7 @@ def contrasts_plot(test, state_sets, subject, save=False, show=False, dpi='figur
         plt.xlabel('Trial', size=36)
         sns.despine()
 
-        # plt.xlim(left=250, right=450)
+        plt.xlim(left=250, right=450)
         if test.results[0].name == 'KS014':
             handles, labels = plt.gca().get_legend_handles_labels()
             order = [1, 0, 2, 3, 4]
@@ -827,7 +861,7 @@ def state_development(test, state_sets, indices, save=True, save_append='', show
     spec.update(hspace=0.)  # set the spacing between axes.
     ax0 = fig.add_subplot(spec[:5, :79])  # performance line
     ax1 = fig.add_subplot(spec[6:, :79])  # state lines
-    ax2 = fig.add_subplot(spec[6:, 86:])
+    ax2 = fig.add_subplot(spec[6:, 88:])
 
     ax0.plot(1 + 0.25, 0.6, 'ko', ms=18)
     ax0.plot(1 + 0.25, 0.6, 'wo', ms=16.8)
@@ -887,6 +921,12 @@ def state_development(test, state_sets, indices, save=True, save_append='', show
         pmfs_to_score.append(np.mean(pmfs))
     # test.state_mapping = dict(zip(range(len(state_sets)), np.argsort(np.argsort(pmfs_to_score))))  # double argsort for ranks
     test.state_mapping = dict(zip(np.flip(np.argsort((states_by_session != 0).argmax(axis=1))), range(len(state_sets))))
+    print(test.state_mapping)
+    if subject == "KS014":
+        test.state_mapping[4] = 5
+        test.state_mapping[1] = 4
+        test.state_mapping[3] = 2
+        test.state_mapping[0] = 1
 
     for state, trials in enumerate(state_sets):
         cmap = matplotlib.cm.get_cmap(cmaps[state]) if state < len(cmaps) else matplotlib.cm.get_cmap('Greys')
@@ -1049,9 +1089,9 @@ def state_development(test, state_sets, indices, save=True, save_append='', show
                     covered_states.append(s)
 
     ax2.set_title('Psychometric\nfunction', size=16)
-    ax1.set_ylabel('Proportion of trials', size=28 if len(state_sets) > 3 else 20, labelpad=-20 if len(state_sets) > 3 else 0)
+    ax1.set_ylabel('Proportion of trials', size=28 if len(state_sets) > 3 else 20, labelpad=-20 if len(state_sets) > 4 else 0)
     ax0.set_ylabel('% correct', size=18)
-    ax2.set_ylabel('P(rightwards answer)', size=26 if len(state_sets) > 3 else 18, labelpad=-20 if len(state_sets) > 3 else 0)
+    ax2.set_ylabel('P(rightwards answer)', size=26 if len(state_sets) > 3 else 18, labelpad=-20 if len(state_sets) > 4 else 0)
     ax1.set_xlabel('Session', size=28)
     ax2.set_xlabel('Contrast', size=26)
     ax1.set_xlim(left=1, right=test.results[0].n_sessions)
@@ -1136,26 +1176,34 @@ def state_development(test, state_sets, indices, save=True, save_append='', show
         return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 def dur_hists(test, trials, indices):
-    def func_init(): return {'dur_params': np.zeros((len(indices), 2))}
+    trial_counter = 0
+    results = {'dur_params': np.zeros((len(indices), 2))}
 
-    def first_for(test, results):
-        pass
+    for j, only_for_length in enumerate(test.results[0].models[0].stateseqs):
+        session_trials = trials[np.logical_and(trial_counter <= trials, trials < trial_counter + len(only_for_length))]
+        if session_trials.shape[0] == 0:
+            trial_counter += len(only_for_length)
+            continue
 
-    def second_for(m, j, counter, session_trials, trial_counter, results):
-        states, counts = np.unique(m.stateseqs[j][session_trials - trial_counter], return_counts=True)
-        for sub_state, c in zip(states, counts):
-            try:
-                p = m.dur_distns[sub_state].p_save  # this cannot be accessed after deleting data, but not every model's data is deleted
-            except:
-                p = m.dur_distns[sub_state].p
-            results['dur_params'][counter] += np.array([m.dur_distns[sub_state].r * c / session_trials.shape[0], p * c / session_trials.shape[0]])
+        quit_out = False
+        counter = -1
+        for i, m in enumerate([item for sublist in test.results for item in sublist.models]):
+            if i not in indices:
+                continue
+            counter += 1
+            states, counts = np.unique(m.stateseqs[j][session_trials - trial_counter], return_counts=True)
+            for sub_state, c in zip(states, counts):
+                try:
+                    p = m.dur_distns[sub_state].p_save  # this cannot be accessed after deleting data, but not every model's data is deleted
+                except:
+                    p = m.dur_distns[sub_state].p
+                results['dur_params'][counter] += np.array([m.dur_distns[sub_state].r * c / session_trials.shape[0], p * c / session_trials.shape[0]])
+                quit_out = True
+            
+        if quit_out:
+            return results['dur_params']
 
-    def end_first_for(results, indices, j, **kwargs):
-        pass
-
-    results = control_flow(test, indices, trials, func_init, first_for, second_for, end_first_for)
-    results['dur_params'] = results['dur_params'] / len(indices)
-    return results['dur_params']
+        trial_counter += len(only_for_length)
 
 
 def smart_divide(a, b):
@@ -1164,7 +1212,10 @@ def smart_divide(a, b):
     c[~d] = a[~d] / b[~d]
     return c
 
-def predictive_check(test, trials, indices):
+
+def predictive_check(test, indices, weights=1, state_assistance=False, return_acc_plot=False, till_session=None):
+
+    title_add = '' if not state_assistance else '_state_assistance'
 
     decay = 0.25
     perseveration_filter_normalization = np.exp(- decay * np.arange(5000)).sum()
@@ -1172,105 +1223,188 @@ def predictive_check(test, trials, indices):
 
     true_accs = []
     gen_accs = []
-    gen_accs_save = []
+    true_pers = []
+    gen_pers = []
+    true_accs_total = []
+    true_pers_total = []
+    true_accs_50 = []
+    true_pers_50 = []
+
+    # we save a bunch of different things, such as 50 percentiles, but also performance sample minus last 50 trials, leading to bad naming schemes heres, TODO
+    gen_accs_save = []  # excluding 25 first and 50 last trials
+    gen_accs_save_total = []  # all trials
+    gen_accs_save_50 = []  # excluding last 50 trials
     gen_accs_50 = []
     gen_accs_95 = []
 
-    true_pers = []
-    gen_pers = []
-    gen_pers_save = []
+    # what if we exclude the strong cont.s
+    true_accs_total_weak = []
+    true_accs_total_weakest = []
+    gen_accs_save_total_weak = []
+    gen_accs_save_total_weakest = []
+
+    weighted_true_accs_total = []
+    weighted_gen_accs_save_total = []
+
+
+    gen_pers_save = []  # excluding 25 first and 50 last trials
+    gen_pers_save_total = []  # all trials
+    gen_pers_save_50 = []  # excluding last 50 trials
     gen_pers_50 = []
     gen_pers_95 = []
 
+    pmf_percentiles_total = []
+    pmf_percentiles_50 = []
+    pmf_percentiles_75 = []
+
+    pmf_dists = []
+    acc_dists = []
+
+    all_models = [item for sublist in test.results for item in sublist.models]
+
+    subject_timeouts = pickle.load(open(f"./session_data/subject_timeout_{test.results[0].name}", 'rb'))
+
     for session in range(test.results[0].n_sessions):
-        print(session)
+        print(session, test.results[0].data[session].shape)
         datas = test.results[0].data[session]
 
         responses = np.zeros(datas.shape[0])
         all_resp = []
-        for index in list(indices) * 2:
-            model = [item for sublist in test.results for item in sublist.models][index]
+        for index in list(indices) * 3:
+            model = all_models[index]
+        # for model in np.random.choice(all_models, 1200):
             curr_state = model.stateseqs[session][0]
-
-            trial_list = []
-            perf_list = []
 
             # simulate from the modle giving the starting state
             generated_trials = 0
             perseveration = 0
+
+            responses_randoms = np.random.rand(datas.shape[0])
+
             while generated_trials < datas.shape[0]:
                 p, r = model.dur_distns[curr_state].p_save, model.dur_distns[curr_state].r
-                state_trials = np.random.poisson(np.random.gamma(r, p / (1 - p)))
+                state_trials = 1 + np.random.poisson(np.random.gamma(r, p / (1 - p)))  # start at 1
 
-                trial_list.append(min(state_trials, datas.shape[0] - generated_trials))
-                perf_list.append(pmf_to_perf(weights_to_pmf(model.obs_distns[curr_state].weights[session])))
+                # print(f"{state_trials} out of {datas.shape[0]}, pmf: {weights_to_pmf(model.obs_distns[curr_state].weights[session])[[0, 1, -2, -1]]}")
 
                 for i in range(state_trials):
                     if generated_trials + i >= datas.shape[0]:
                         break
                     local_data = datas[generated_trials + i, :-1]
                     # replace with actual, model-generated perseveration
+                    if generated_trials + i in subject_timeouts[session]:
+                        # print()
+                        # print(perseveration)
+                        perseveration = perseveration * decay_const ** subject_timeouts[session][generated_trials + i]
+                        # print(perseveration)
                     local_data[2] = perseveration / perseveration_filter_normalization
 
-                    responses[generated_trials + i] = model.obs_distns[curr_state].rvs([local_data.reshape(1, 4)], [session])[0][-1][-1]  # lots to unpack
+                    if state_assistance:
+                        curr_state = model.stateseqs[session][generated_trials + i]
+                    responses[generated_trials + i] = responses_randoms[generated_trials + i] < 1 / (1 + np.exp(- np.sum(model.obs_distns[curr_state].weights[session] * local_data)))  # compute this directly, calling rvs takes too long
 
                     perseveration = (responses[generated_trials + i] * 2 - 1) + perseveration * decay_const
                 generated_trials += state_trials
 
                 # get the next state
-                curr_state = np.random.choice(15, p=model.trans_distn.trans_matrix[curr_state])
+                if not state_assistance:
+                    curr_state = np.random.choice(15, p=model.trans_distn.trans_matrix[curr_state])
 
             all_resp.append(responses.copy())
 
-        true_accs.append(compute_accuracy(datas, datas[:, -1]))
-        all_accs = [compute_accuracy(datas, resp) for resp in all_resp]
-        gen_accs.append(np.mean(all_accs))
-        gen_accs_save.append([compute_accuracy(datas, resp) for resp in all_resp])
-        gen_accs_50.append([np.percentile(all_accs, 25), np.percentile(all_accs, 75)])
-        gen_accs_95.append([np.percentile(all_accs, 2.5), np.percentile(all_accs, 97.5)])
+        # maybe TODO: perseveration estimation would really need to know about timeouts
+        gen_accs_save_total.append([compute_accuracy(datas, resp) for resp in all_resp])
+        gen_pers_save_total.append([compute_perseveration(datas, resp) for resp in all_resp])
 
-        true_pers.append(compute_perseveration(datas, datas[:, -1]))
-        all_pers = [compute_perseveration(datas, resp) for resp in all_resp]
-        gen_pers.append(np.mean(all_pers))
-        gen_pers_save.append([compute_perseveration(datas, resp) for resp in all_resp])
-        gen_pers_50.append([np.percentile(all_pers, 25), np.percentile(all_pers, 75)])
-        gen_pers_95.append([np.percentile(all_pers, 2.5), np.percentile(all_pers, 97.5)])
+        true_accs_total.append(compute_accuracy(datas, datas[:, -1]))
+        true_pers_total.append(compute_perseveration(datas, datas[:, -1]))
+
+        # weighted stuff
+        # weighted_true_accs_total.append(compute_accuracy(datas, datas[:, -1], weights[session]))
+        # weighted_gen_accs_save_total.append([compute_accuracy(datas, resp, weights[session]) for resp in all_resp])
+
+
+        true_accs_total_weak.append(compute_accuracy_weak_conts(datas, datas[:, -1], exclude_list=[1.]))
+        # true_accs_total_weakest.append(compute_accuracy_weak_conts(datas, datas[:, -1], exclude_list=[1., 0.987]))
+        gen_accs_save_total_weak.append([compute_accuracy_weak_conts(datas, resp, exclude_list=[1.]) for resp in all_resp])
+        # gen_accs_save_total_weakest.append([compute_accuracy_weak_conts(datas, resp, exclude_list=[1., 0.987]) for resp in all_resp])
 
         true_pmf = compute_pmf(datas, datas[:, -1])
         gen_pmf = [compute_pmf(datas, resp) for resp in all_resp]
+        pmf_percentiles_total.append(calculate_true_percentiles(true_pmf, np.array(gen_pmf).T))
 
-        plt.figure(figsize=(16, 9))
-        plt.plot(true_pmf, 'k', zorder=3, label='Empirical')
-        plt.plot(np.mean(gen_pmf, axis=0), 'g', zorder=2, label='Generated mean')
-        percentiles = np.percentile(gen_pmf, [25, 75], axis=0)
-        plt.fill_between(range(len(true_pmf)), percentiles[0], percentiles[1], color='b', zorder=1, alpha=0.25, label='Generated 50% CI')
-        percentiles = np.percentile(gen_pmf, [2.5, 97.5], axis=0)
-        plt.fill_between(range(len(true_pmf)), percentiles[0], percentiles[1], color='r', zorder=0, alpha=0.1, label='Generated 95% CI')
+        pmf_dists.append((true_pmf - np.mean(gen_pmf, axis=0)) / np.std(gen_pmf, axis=0))
 
-        if len(true_pmf) == 4:
-            plt.xticks(range(4), [-1, -0.5, 0.5, 1])
-        elif len(true_pmf) == 6:
-            plt.xticks(range(6), [-1, -0.5, -0.25, 0.25, 0.5, 1])
-        elif len(true_pmf) == 8:
-            plt.xticks(range(8), [-1, -0.5, -0.25, -0.125, 0.125, 0.25, 0.5, 1])
-        elif len(true_pmf) == 10:
-            plt.xticks(range(10), [-1, -0.5, -0.25, -0.125, -0.0625, 0.0625, 0.125, 0.25, 0.5, 1])
-        elif len(true_pmf) == 11:
-            plt.xticks(range(11), [-1, -0.5, -0.25, -0.125, -0.0625, 0, 0.0625, 0.125, 0.25, 0.5, 1])
-        elif len(true_pmf) == 9:
-            plt.xticks(range(9), [-1, -0.25, -0.125, -0.0625, 0, 0.0625, 0.125, 0.25, 1])
+        if datas.shape[0] > 75:
+            true_accs.append(compute_accuracy(datas[25:-50], datas[25:-50, -1]))
+            true_accs_50.append(compute_accuracy(datas[:-50], datas[:-50, -1]))
+            all_accs = [compute_accuracy(datas[25:-50], resp[25:-50]) for resp in all_resp]
+            gen_accs.append(np.mean(all_accs))
+            gen_accs_save.append([compute_accuracy(datas[25:-50], resp[25:-50]) for resp in all_resp])
+            gen_accs_save_50.append([compute_accuracy(datas[:-50], resp[:-50]) for resp in all_resp])
+            gen_accs_50.append([np.percentile(all_accs, 25), np.percentile(all_accs, 75)])
+            gen_accs_95.append([np.percentile(all_accs, 2.5), np.percentile(all_accs, 97.5)])
 
-        plt.legend(frameon=False, fontsize=24)
-        plt.xlim(0, len(true_pmf) - 1)
-        plt.gca().spines[['right', 'top']].set_visible(False)
-        plt.gca().tick_params(axis='both', which='major', labelsize=21)
-        plt.xlabel("Contrast", size=30)
-        plt.ylabel("% rightwards responses", size=30)
-        plt.ylim(0, 1)
-        plt.title("Session {}".format(session + 1), size=30)
-        plt.savefig("pmf_check_{}_{}.png".format(test.results[0].name, session))
-        plt.close()
+            true_pers.append(compute_perseveration(datas[25:-50], datas[25:-50, -1]))
+            true_pers_50.append(compute_perseveration(datas[:-50], datas[:-50, -1]))
+            all_pers = [compute_perseveration(datas[25:-50], resp[25:-50]) for resp in all_resp]
+            gen_pers.append(np.mean(all_pers))
+            gen_pers_save.append([compute_perseveration(datas[25:-50], resp[25:-50]) for resp in all_resp])
+            gen_pers_save_50.append([compute_perseveration(datas[:-50], resp[:-50]) for resp in all_resp])
+            gen_pers_50.append([np.percentile(all_pers, 25), np.percentile(all_pers, 75)])
+            gen_pers_95.append([np.percentile(all_pers, 2.5), np.percentile(all_pers, 97.5)])
 
+            true_pmf = compute_pmf(datas[25:-50], datas[25:-50, -1])
+            gen_pmf = [compute_pmf(datas[25:-50], resp[25:-50]) for resp in all_resp]
+            pmf_percentiles_75.append(calculate_true_percentiles(true_pmf, np.array(gen_pmf).T))
+
+            true_pmf = compute_pmf(datas[:-50], datas[:-50, -1])
+            gen_pmf = [compute_pmf(datas[:-50], resp[:-50]) for resp in all_resp]
+            pmf_percentiles_50.append(calculate_true_percentiles(true_pmf, np.array(gen_pmf).T))
+
+            if session == till_session:
+                break
+
+        # plt.figure(figsize=(16, 9))
+        # plt.plot(true_pmf, 'k', zorder=3, label='Empirical')
+        # plt.plot(np.mean(gen_pmf, axis=0), 'g', zorder=2, label='Generated mean')
+        # plt.plot(np.min(gen_pmf, axis=0), 'k--', alpha=0.25, zorder=2)
+        # plt.plot(np.max(gen_pmf, axis=0), 'k--', alpha=0.25, zorder=2)
+        # percentiles = np.percentile(gen_pmf, [25, 75], axis=0)
+        # plt.fill_between(range(len(true_pmf)), percentiles[0], percentiles[1], color='b', zorder=1, alpha=0.25, label='Generated 50% CI')
+        # percentiles = np.percentile(gen_pmf, [2.5, 97.5], axis=0)
+        # plt.fill_between(range(len(true_pmf)), percentiles[0], percentiles[1], color='r', zorder=0, alpha=0.1, label='Generated 95% CI')
+
+        # if len(true_pmf) == 4:
+        #     plt.xticks(range(4), [-1, -0.5, 0.5, 1])
+        # elif len(true_pmf) == 6:
+        #     plt.xticks(range(6), [-1, -0.5, -0.25, 0.25, 0.5, 1])
+        # elif len(true_pmf) == 8:
+        #     plt.xticks(range(8), [-1, -0.5, -0.25, -0.125, 0.125, 0.25, 0.5, 1])
+        # elif len(true_pmf) == 10:
+        #     plt.xticks(range(10), [-1, -0.5, -0.25, -0.125, -0.0625, 0.0625, 0.125, 0.25, 0.5, 1])
+        # elif len(true_pmf) == 11:
+        #     plt.xticks(range(11), [-1, -0.5, -0.25, -0.125, -0.0625, 0, 0.0625, 0.125, 0.25, 0.5, 1])
+        # elif len(true_pmf) == 9:
+        #     plt.xticks(range(9), [-1, -0.25, -0.125, -0.0625, 0, 0.0625, 0.125, 0.25, 1])
+
+        # plt.legend(frameon=False, fontsize=24)
+        # plt.xlim(0, len(true_pmf) - 1)
+        # plt.gca().spines[['right', 'top']].set_visible(False)
+        # plt.gca().tick_params(axis='both', which='major', labelsize=21)
+        # plt.xlabel("Contrast", size=30)
+        # plt.ylabel("% rightwards responses", size=30)
+        # plt.ylim(0, 1)
+        # plt.title("Session {}".format(session + 1), size=30)
+        # plt.savefig("pmf_check_{}_{}{}_even.png".format(test.results[0].name, session, title_add))
+        # plt.close()
+
+        # if calculate_true_percentiles(true_pmf, np.array(gen_pmf).T)[0] == 0.:
+        #     print(calculate_true_percentiles(true_pmf, np.array(gen_pmf).T))
+        #     return true_pmf, np.array(gen_pmf).T
+
+    if return_acc_plot:
+        return true_accs, gen_accs_save_total, true_pmf, gen_pmf
 
     plt.figure(figsize=(16, 9))
     plt.plot(range(1, 1 + len(true_accs)), true_accs, 'k', zorder=3, label='Empirical')
@@ -1278,13 +1412,14 @@ def predictive_check(test, trials, indices):
     plt.fill_between(range(1, 1 + len(true_accs)), np.array(gen_accs_50)[:, 0], np.array(gen_accs_50)[:, 1], color='b', zorder=1, alpha=0.25, label='Generated 50% CI')
     plt.fill_between(range(1, 1 + len(true_accs)), np.array(gen_accs_95)[:, 0], np.array(gen_accs_95)[:, 1], color='r', zorder=0, alpha=0.1, label='Generated 95% CI')
 
+
     plt.legend(frameon=False, fontsize=24)
     plt.gca().spines[['right', 'top']].set_visible(False)
     plt.gca().tick_params(axis='both', which='major', labelsize=21)
     plt.xlabel("Session", size=30)
     plt.ylabel("Reward rate", size=30)
     plt.ylim(0, 1)
-    plt.savefig("all_pred_check_{}_{}.png".format('acc', test.results[0].name))
+    plt.savefig("./pred_checks/all_pred_check_{}_{}{}.png".format('acc', test.results[0].name, title_add))
     plt.close()
 
 
@@ -1300,17 +1435,30 @@ def predictive_check(test, trials, indices):
     plt.xlabel("Session", size=30)
     plt.ylabel("Response correlation", size=30)
     plt.ylim(0, 0.6)
-    plt.savefig("all_pred_check_{}_{}.png".format('pers', test.results[0].name))
+    plt.savefig("./pred_checks/all_pred_check_{}_{}{}.png".format('pers', test.results[0].name, title_add))
     plt.close()
 
+    acc_dists.append((np.array(true_accs_total) - np.array([np.mean(x) for x in gen_accs_save_total])) / np.array([np.std(x) for x in gen_accs_save_total]))
+
     # find out in which percentiles the accuracies lie
-    print(all_accs)
     acc_percentiles = calculate_true_percentiles(true_accs, gen_accs_save)
     pers_percentiles = calculate_true_percentiles(true_pers, gen_pers_save)
 
-    return acc_percentiles, pers_percentiles
+    weighted_acc_percentiles = calculate_true_percentiles(weighted_true_accs_total, weighted_gen_accs_save_total)
 
-def compute_accuracy(inputs, responses):
+    acc_percentiles_50 = calculate_true_percentiles(true_accs_50, gen_accs_save_50)
+    pers_percentiles_50 = calculate_true_percentiles(true_pers_50, gen_pers_save_50)
+
+    acc_percentiles_total = calculate_true_percentiles(true_accs_total, gen_accs_save_total)
+    pers_percentiles_total = calculate_true_percentiles(true_pers_total, gen_pers_save_total)
+
+    acc_weak_percentiles = calculate_true_percentiles(true_accs_total_weak, gen_accs_save_total_weak)
+    acc_weakest_percentiles = calculate_true_percentiles(true_accs_total_weakest, gen_accs_save_total_weakest)
+
+    return acc_percentiles, pers_percentiles, pmf_percentiles_75, acc_percentiles_50, pers_percentiles_50, pmf_percentiles_50, acc_percentiles_total, \
+            pers_percentiles_total, pmf_percentiles_total, acc_weak_percentiles, acc_weakest_percentiles, acc_dists, pmf_dists, weighted_acc_percentiles
+
+def compute_accuracy(inputs, responses, weights=1):
     # inputs: n_trials x 4, responses: n_trials
     right = inputs[:, 0] > 0
     left = inputs[:, 1] > 0
@@ -1321,10 +1469,32 @@ def compute_accuracy(inputs, responses):
     correct[right & (responses == 0)] = 1
     correct[zeros] = 0.5
 
-    return np.mean(correct)
+    return np.mean(correct * weights)
+
+def compute_accuracy_weak_conts(inputs, responses, exclude_list=[]):
+    # inputs: n_trials x 4, responses: n_trials
+    right = inputs[:, 0] > 0
+    left = inputs[:, 1] > 0
+
+    for e in exclude_list:
+        right = np.logical_and(right, inputs[:, 0] != e)
+        left = np.logical_and(left, inputs[:, 1] != e)
+
+    zeros = np.logical_and(inputs[:, 0] == 0, inputs[:, 1] == 0)
+                           
+    correct = np.zeros_like(responses)
+    correct[left & (responses == 1)] = 1
+    correct[right & (responses == 0)] = 1
+    correct[zeros] = 0.5
+
+    return np.sum(correct) / (np.sum(left) + np.sum(right) + np.sum(zeros))
 
 def compute_perseveration(inputs, responses):
     # inputs: responses: n_trials
+
+    # sometimes all answers are the same, crashing the correlation
+    if np.all(responses[:-1] == responses[0]) or np.all(responses[1:] == responses[1]):
+        return 1
     
     return np.corrcoef(responses[:-1], responses[1:])[0, 1]
 
@@ -1334,13 +1504,13 @@ def compute_pmf(inputs, responses):
     for i, c in enumerate(np.unique(conts)):
         perfs[i] = np.mean(responses[conts == c])
 
-    return 1 - perfs
+    return 1-perfs
 
 def calculate_true_percentiles(trues, gens):
     percentiles = []
     for true, gen in zip(trues, gens):
         # Compute the percentile rank of the true accuracy within the generated accuracies array
-        percentiles.append(np.sum(gen < true) / len(gen))
+        percentiles.append((np.sum(np.array(gen) <= np.array(true)) / len(gen) + np.sum(np.array(gen) < np.array(true)) / len(gen)) / 2)
     return percentiles
 
 def dist_helper(dist_matrix, state_hists, inds):
@@ -1458,7 +1628,6 @@ def write_results(test, state_sets, indices, consistencies=None):
 
     return state_dict, session_dict
 
-
 if __name__ == "__main__":
 
     fit_type = ['prebias', 'bias', 'all', 'prebias_plus', 'zoe_style'][0]
@@ -1477,19 +1646,21 @@ if __name__ == "__main__":
     #     subject = result.group(1)
     #     subjects.append(subject)
 
-    subjects = ['CSHL058', 'CSHL059', 'CSHL060', 'CSHL_007', 'CSHL_014', 'CSHL_015',
-           'CSHL_020', 'CSH_ZAD_001', 'CSH_ZAD_011', 'CSH_ZAD_017', 'CSH_ZAD_019', 'CSH_ZAD_022', 'CSH_ZAD_024', 'CSH_ZAD_025', 'CSH_ZAD_026', 'CSH_ZAD_029', 'DY_008',
-           'DY_009', 'DY_010', 'DY_011', 'DY_013', 'DY_014', 'DY_016', 'DY_018', 'DY_020', 'KS014', 'KS015', 'KS016', 'KS017', 'KS019', 'KS021', 'KS022', 'KS023',
-           'KS042', 'KS043', 'KS044', 'KS045', 'KS046', 'KS051', 'KS052', 'KS055', 'KS084', 'KS086', 'KS091', 'KS094', 'KS096', 'MFD_05', 'MFD_06', 'MFD_07', 'MFD_08',
-           'MFD_09', 'NR_0017', 'NR_0019', 'NR_0020', 'NR_0021', 'NR_0024', 'NR_0027', 'NR_0028', 'NR_0029', 'NR_0031', 'NYU-06', 'NYU-11', 'NYU-12', 'NYU-21', 'NYU-27',
-           'NYU-30', 'NYU-37', 'NYU-39', 'NYU-40', 'NYU-45', 'NYU-46', 'NYU-47', 'NYU-48', 'NYU-65', 'PL015', 'PL016', 'PL017', 'PL024', 'PL030', 'PL031', 'PL033',
-           'PL034', 'PL035', 'PL037', 'PL050', 'SWC_021', 'SWC_022', 'SWC_023', 'SWC_038', 'SWC_039', 'SWC_042', 'SWC_043', 'SWC_052', 'SWC_053', 'SWC_054', 'SWC_058',
-           'SWC_060', 'SWC_061', 'SWC_065', 'SWC_066', 'UCLA005', 'UCLA006', 'UCLA011', 'UCLA012', 'UCLA014', 'UCLA015', 'UCLA017', 'UCLA030', 'UCLA033', 'UCLA034',
-           'UCLA035', 'UCLA036', 'UCLA037', 'UCLA044', 'UCLA048', 'UCLA049', 'UCLA052', 'ZFM-01576', 'ZFM-01577', 'ZFM-01592', 'ZFM-01935', 'ZFM-01936', 'ZFM-01937',
-           'ZFM-02368', 'ZFM-02369', 'ZFM-02370', 'ZFM-02372', 'ZFM-02373', 'ZFM-04308', 'ZFM-05236', 'ZM_1897', 'ZM_1898', 'ZM_2240', 'ZM_2241', 'ZM_2245', 'ZM_3003',
-           'ibl_witten_13', 'ibl_witten_14', 'ibl_witten_16', 'ibl_witten_17', 'ibl_witten_18', 'ibl_witten_19', 'ibl_witten_20', 'ibl_witten_25', 'ibl_witten_26',
-           'ibl_witten_27', 'ibl_witten_29', 'ibl_witten_32']
-    # done: 'UCLA006', 'CSHL045', 'CSHL047', 'CSHL049', 'CSHL051', 'CSHL052', 'CSHL053', 'CSHL054', 'CSHL055', 
+    subjects = ['MFD_09', 'PL037', 'MFD_08', 'UCLA035', 'CSH_ZAD_025', 'DY_011', 'KS052', 'SWC_052', 'UCLA049', 'NYU-37', 'ibl_witten_25', 'UCLA048', 'DY_010', 'CSHL054',
+                'CSH_ZAD_024', 'UCLA034', 'KS046', 'KS094', 'KS044', 'KS096', 'PL034', 'NR_0028', 'CSH_ZAD_026', 'NYU-48', 'UCLA036', 'SWC_038', 'KS051',
+                'ibl_witten_18', 'ibl_witten_27', 'ibl_witten_19', 'SWC_039', 'DY_013', 'CSHL_020', 'UCLA037', 'NR_0029', 'PL035', 'UCLA033', 'ZFM-01937', 'KS016',
+                'CSHL053', 'KS086', 'PL024', 'ZFM-01576', 'ZFM-02370', 'SWC_054', 'NYU-30', 'CSHL047', 'ZFM-01577', 'KS055', 'CSHL052', 'KS017', 'DY_016', 'PL030',
+                'ZFM-01936', 'CSH_ZAD_022', 'UCLA030', 'KS042', 'NYU-27', 'KS015', 'DY_014', 'NYU-65', 'ibl_witten_20', 'CSHL045', 'ZFM-02373', 'ZFM-02372', 'KS084',
+                'CSHL051', 'KS014', 'SWC_043', 'ZFM-01935', 'KS043', 'KS091', 'PL033', 'KS022', 'CSHL059', 'NR_0019', 'SWC_022', 'NYU-47', 'NR_0027', 'CSH_ZAD_029',
+                'ibl_witten_17', 'DY_008', 'SWC_060', 'ibl_witten_29', 'UCLA012', 'SWC_061', 'ibl_witten_16', 'DY_009', 'UCLA044', 'SWC_023', 'NYU-46',  'MFD_05',
+                'CSHL058', 'NYU-11', 'KS023', 'KS021', 'DY_020', 'ZFM-05236', 'SWC_021', 'MFD_07', 'ibl_witten_14', 'NYU-06', 'NR_0031',
+                'UCLA011', 'CSH_ZAD_001', 'ZFM-01592', 'CSHL_007', 'NYU-39', 'MFD_06', 'NYU-45', 'ZM_2245', 'UCLA005', 'UCLA052', 'PL050', 'NYU-12', 'ZFM-02369',
+                'NR_0021', 'ZM_2241', 'CSH_ZAD_011', 'SWC_066', 'UCLA014', 'PL016', 'PL017', 'ZM_1897', 'NR_0020', 'ZM_2240', 'NYU-40', 'ZFM-02368',
+                'CSHL060', 'KS019', 'DY_018', 'CSHL_015', 'CSHL049', 'UCLA017', 'PL015', 'ibl_witten_13', 'ZM_3003', 'CSHL_014', 'SWC_065']
+    # worked: 
+    
+    # no data attribute: 'MFD_09', 
+    # too big: 'UCLA006', 'NR_0024' 'UCLA015'
     print(len(subjects))
     fit_variance = 0.04
     dur = 'yes'
@@ -1551,16 +1722,25 @@ if __name__ == "__main__":
     works_counter = 0
     fail_counter = 0
     check_yes = []
+    all_summed_beliefs = []
 
-    for subject in subjects:
-        if subject.startswith('GLM_Sim_') or subject.startswith('fip_'): # or subject in ['SWC_065', 'ZFM-05245', 'ZFM-04019', 'ibl_witten_18', 'NYU-12', 'UCLA015', 'CSHL062', 'CSHL_018', 'CSHL061']:
+    print("WARNING, not saving")
+
+    for subject in subjects[::2]:
+        if subject.startswith('GLM_Sim_') or subject.startswith('fip_') or subject in ['PL037', 'PL034', 'PL035', 'DY_010', 'SWC_065']:
         #     # ibl_witten_18 is a weird one, super good session in the middle, ending phase 1, never to re-appear, bad at the end
         #     # ZFM-05245 is neuromodulator mouse, never reaches ephys it seems... same for ZFM-04019
         #     # SWC_065 never reaches type 3
         #     # UCLA006 is too large to load both the canonical result and its consistencies
         #     # 'NYU-12' has no data for some reason
         #     # UCLA015 has a problem
-        #     # 'CSHL062', 'CSHL_018', 'CSHL061' are not IBL project mice
+        # old skips: SWC_065', 'ZFM-05245', 'ZFM-04019', 'ibl_witten_18', 'NYU-12', 'UCLA015', 'CSHL062', 'CSHL_018', 'CSHL061'
+        # new comments:
+        # PL037 starts out perfect and has no contrast introduction, missing data
+        # PL034 also perfect from start, missing data
+        # PL035 same, missing data
+        # DY_010 is weird, investigate: missing data
+        # SWC_065 never reaches type 3
             continue
 
         print(subject)
@@ -1613,6 +1793,11 @@ if __name__ == "__main__":
             continue
 
         test = pickle.load(open("multi_chain_saves/canonical_result_{}_{}".format(subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
+        if len(test.results[0].infos) < len(info_dict):
+            test.results[0].infos = info_dict
+            test.results[0].n_contrasts = 11
+            print(f'overwriting info dict of {subject}')
+            pickle.dump(test, open("multi_chain_saves/canonical_result_{}_{}".format(subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'wb'))
         try:
             mode_indices = pickle.load(open("multi_chain_saves/{}_mode_indices_{}_{}".format(mode_specifier, subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
             state_sets = pickle.load(open("multi_chain_saves/{}_state_sets_{}_{}".format(mode_specifier, subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
@@ -1629,18 +1814,53 @@ if __name__ == "__main__":
                 continue
         ultimate_counter += 1
 
-        # print(works_counter, fail_counter)
+        print(works_counter, fail_counter)
+
+        # try:
+        #     consistencies = pickle.load(open("multi_chain_saves/first_mode_consistencies_{}_{}".format(subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
+        # except FileNotFoundError:
+        #     consistencies = pickle.load(open("multi_chain_saves/consistencies_{}_{}".format(subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
+        # consistencies /= consistencies[0, 0]
+
+        # all_summed_beliefs += extrapolate_belief_strength(test, consistencies)
+
+        # continue
 
         try:
-            acc_percentiles, pers_percentiles = predictive_check(test, [s for s in state_sets if len(s) > 40], mode_indices)
-            pickle.dump(acc_percentiles, open("temp_acc_percentiles_{}".format(subject), 'wb'))
-            pickle.dump(pers_percentiles, open("temp_per_percentiles_{}".format(subject), 'wb'))
-        except:
+
+            # n = test.results[0].n_sessions
+            # trial_counter = 0
+            # weight_collection = []
+
+            # for seq_num in range(n):
+
+            #     weight_collection.append(np.zeros(len(test.results[0].models[0].stateseqs[seq_num])))
+
+            #     state_consistencies = {}  # save when which state is how certain, to later compare their responses
+            #     for state, trials in enumerate(state_sets):
+
+            #         relevant_trials = trials[np.logical_and(trial_counter <= trials, trials < trial_counter + len(test.results[0].models[0].stateseqs[seq_num]))]
+            #         active_trials = np.zeros(len(test.results[0].models[0].stateseqs[seq_num]))
+
+            #         active_trials[relevant_trials - trial_counter] = np.sum(consistencies[tuple(np.meshgrid(relevant_trials, trials))], axis=0)
+            #         active_trials[relevant_trials - trial_counter] -= 1
+            #         active_trials[relevant_trials - trial_counter] = active_trials[relevant_trials - trial_counter] / (trials.shape[0] - 1)
+
+            #         if active_trials.sum() > 0:
+            #             weight_collection[-1] += active_trials
+
+            #     trial_counter += len(test.results[0].models[0].stateseqs[seq_num])
+
+            state_assistance = False
+            all_infos = predictive_check(test, mode_indices)
+            pickle.dump(all_infos, open("./pred_checks_8/all_infos_{}_weighted".format(subject, state_assistance), 'wb'))
+        except Exception as E:
+            print(E)
+            quit()
             continue
         continue
 
-
-        # states, pmfs, pmf_weights, durs, state_types, contrast_intro_type, intros_by_type, undiv_intros, states_per_type, trial_ns = state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save=True, show=True, separate_pmf=1, type_coloring=True, dpi=300, save_append=str(fit_variance).replace('.', '_'))
+        states, pmfs, pmf_weights, durs, state_types, contrast_intro_type, intros_by_type, undiv_intros, states_per_type, trial_ns = state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save=True, show=False, separate_pmf=1, type_coloring=True, dpi=300, save_append=str(fit_variance).replace('.', '_'))
         # compare_pmfs(test, [0, 1], states, pmfs)
         
         try:
@@ -1648,8 +1868,9 @@ if __name__ == "__main__":
         except FileNotFoundError:
             consistencies = pickle.load(open("multi_chain_saves/consistencies_{}_{}".format(subject, fit_type) + fit_var * "_var_{}".format(fit_variance) + '.p', 'rb'))
         consistencies /= consistencies[0, 0]
-        contrasts_plot(test, [s for s in state_sets if len(s) > 40], dpi=300, subject=subject, save=True, show=True, consistencies=consistencies, CMF=False)
-        quit()
+        # contrasts_plot(test, [s for s in state_sets if len(s) > 40], dpi=300, subject=subject, save=True, show=False, consistencies=consistencies, CMF=False)
+        # quit()
+
         basic_info, diffs, regressed_or_not, regression_magnitude = pmf_regressions(states, pmfs, durs)
         regressions.append(basic_info)
         regression_diffs.append(diffs)
@@ -1661,6 +1882,7 @@ if __name__ == "__main__":
         session_counter += test.results[0].n_sessions
 
         print(trial_counter / ultimate_counter)
+        print("trial and session counter", trial_counter, session_counter)
         captured_states.append((len([item for sublist in state_sets for item in sublist if len(sublist) > 40]), test.results[0].n_datapoints, len([s for s in state_sets if len(s) > 40]), test.results[0].n_sessions))
 
         # training overview
@@ -1677,34 +1899,57 @@ if __name__ == "__main__":
         # pickle.dump(session_dict, open("sofiya_data/session_dict_{}".format(subject), 'wb'))
 
         # Test KS014's session number 12 for difference between state 5 and 6
-        if subject == 'KS014' and False:
-            _, cnas, state_consistencies = contrasts_plot(test, [s for s in state_sets if len(s) > 40], dpi=300, subject=subject, save=False, show=False, consistencies=consistencies, CMF=False)
+        if subject == 'KS014' and True:
+
+            # dur dist plotting - maybe I shouldn't average over parameters?
+            # from scipy.stats import nbinom
+            # for state in range(15):
+            #     a = dur_hists(test, [s for s in state_sets if len(s) > 40][state], mode_indices)
+            #     mix = np.zeros(1000)
+            #     for i in range(len(a)):
+            #         mix += nbinom.pmf(np.arange(1000), a[i][0], 1 - a[i][1]) / len(a)
+            #     plt.plot(mix)
+            #     # plt.plot(nbinom.pmf(np.arange(1000), a.mean(0)[0], 1- a.mean(0)[1]))
+            #     plt.title(len(state_sets) - test.state_mapping[state])
+            #     plt.show()
+
+            _, cnas, state_consistencies = contrasts_plot(test, [s for s in state_sets if len(s) > 40], dpi=300, subject=subject, save=True, show=True, consistencies=consistencies, CMF=False)
             cnas = cnas[0] # works if we only return one cnas, from sess 12
             # a 0 in cnas[:, -1] is a rightwards answer
             # a 1 in cnas[:, 0] is a rightwards trial
-            a1 = cnas[np.logical_and(cnas[:, 0] == 1, state_consistencies[5] > 0.5), -1]
+            a1 = cnas[np.logical_and(cnas[:, 0] == 1, state_consistencies[4] > 0.5), -1]
             a2 = cnas[np.logical_and(cnas[:, 0] == 1, state_consistencies[6] > 0.5), -1]
             print(a1.sum(), a1.size, a2.sum(), a2.size)
             print(two_sample_binom_test(a1, a2))
 
-            a1 = cnas[np.logical_and(cnas[:, 0] == 0.987, state_consistencies[5] > 0.5), -1]
+            a1 = cnas[np.logical_and(cnas[:, 0] == 0.987, state_consistencies[4] > 0.5), -1]
             a2 = cnas[np.logical_and(cnas[:, 0] == 0.987, state_consistencies[6] > 0.5), -1]
             print(a1.sum(), a1.size, a2.sum(), a2.size)
             print(two_sample_binom_test(a1, a2))
 
 
-            a1 = cnas[np.logical_and(cnas[:, 0] == 0.848, state_consistencies[5] > 0.5), -1]
+            a1 = cnas[np.logical_and(cnas[:, 0] == 0.848, state_consistencies[4] > 0.5), -1]
             a2 = cnas[np.logical_and(cnas[:, 0] == 0.848, state_consistencies[6] > 0.5), -1]
             print(a1.sum(), a1.size, a2.sum(), a2.size)
             print(two_sample_binom_test(a1, a2))
 
-            a1 = cnas[np.logical_and(cnas[:, 1] == 0.848, state_consistencies[5] > 0.5), -1]
+            a1 = cnas[np.logical_and(cnas[:, 1] == 0.848, state_consistencies[4] > 0.5), -1]
             a2 = cnas[np.logical_and(cnas[:, 1] == 0.848, state_consistencies[6] > 0.5), -1]
             print(a1.sum(), a1.size, a2.sum(), a2.size)
             print(two_sample_binom_test(a1, a2))
 
-            states = np.concatenate([np.repeat([5], np.sum(state_consistencies[5] > 0.5)), np.repeat([6], np.sum(state_consistencies[6] > 0.5))])
-            state_5 = state_consistencies[5] > 0.5
+            a1 = cnas[np.logical_and(cnas[:, 1] == 0.987, state_consistencies[4] > 0.5), -1]
+            a2 = cnas[np.logical_and(cnas[:, 1] == 0.987, state_consistencies[6] > 0.5), -1]
+            print(a1.sum(), a1.size, a2.sum(), a2.size)
+            print(two_sample_binom_test(a1, a2))
+
+            a1 = cnas[np.logical_and(cnas[:, 1] == 1, state_consistencies[4] > 0.5), -1]
+            a2 = cnas[np.logical_and(cnas[:, 1] == 1, state_consistencies[6] > 0.5), -1]
+            print(a1.sum(), a1.size, a2.sum(), a2.size)
+            print(two_sample_binom_test(a1, a2))
+
+            states = np.concatenate([np.repeat([4], np.sum(state_consistencies[4] > 0.5)), np.repeat([6], np.sum(state_consistencies[6] > 0.5))])
+            state_5 = state_consistencies[4] > 0.5
             state_6 = state_consistencies[6] > 0.5
             contrasts = np.concatenate([cnas[state_5, 0] - cnas[state_5, 1], cnas[state_6, 0] - cnas[state_6, 1]])
             anwers = np.concatenate([cnas[state_5, -1], cnas[state_6, -1]])
@@ -1720,6 +1965,8 @@ if __name__ == "__main__":
             print(sm.stats.anova_lm(model, typ=2))
             quit()
 
+        # lost session_contrasts somehow
+        test.results[0].session_contrasts = [np.unique(cont_mapping(d[:, 0] - d[:, 1])) for d in test.results[0].data]
         sudden_changes, sudden_transition_changes, aug_sudden_changes, aug_sudden_transition_changes, in_sess_appear_dist, in_train_appear_dist, in_sess_appear_dist_old, in_train_appear_dist_old, type_1_to_2, session_time_at_sudden_change = sudden_state_changes(test, [s for s in state_sets if len(s) > 40], consistencies=consistencies, pmf_weights=pmf_weights, pmfs=pmfs)
         session_time_at_sudden_changes[0] += session_time_at_sudden_change[0]
         session_time_at_sudden_changes[1] += session_time_at_sudden_change[1]
@@ -1727,6 +1974,7 @@ if __name__ == "__main__":
 
         in_sess_appear += in_sess_appear_dist
         in_train_appear += in_train_appear_dist
+        # print(test.n_sessions, train_appear_dist)
 
         all_first_pmfs_typeless[subject] = []
         for pmf in pmfs:
@@ -1757,7 +2005,7 @@ if __name__ == "__main__":
         print(new_counter, transform_counter)
 
         first_and_last_pmf.append((pmf_weights[np.argmax(states[:, 0])][0], pmf_weights[np.argmax(states[:, -1])][-1]))
-
+        quit()
         all_sudden_changes[0] += sudden_changes[0]
         all_sudden_changes[1] += sudden_changes[1]
         all_sudden_changes[2] += sudden_changes[2]
@@ -1796,7 +2044,7 @@ if __name__ == "__main__":
                 all_pmf_asymms.append(np.abs(p[0] + p[-1] - 1))
         contrast_intro_types.append(contrast_intro_type)
 
-    if ultimate_counter > 100 and False:
+    if ultimate_counter > 10 and False:
         pickle.dump(all_first_pmfs, open("all_first_pmfs.p", 'wb'))
         pickle.dump(all_changing_pmfs, open("changing_pmfs.p", 'wb'))
         pickle.dump(all_changing_pmf_names, open("changing_pmf_names.p", 'wb'))
@@ -1831,9 +2079,10 @@ if __name__ == "__main__":
         pickle.dump(regressed_or_not_list, open("multi_chain_saves/regressed_or_not_list.p", 'wb'))
         pickle.dump(regression_magnitude_list, open("multi_chain_saves/regression_magnitude_list.p", 'wb'))
         pickle.dump(dates_list, open("multi_chain_saves/dates_list.p", 'wb'))
+        pickle.dump((trial_counter, session_counter), open("multi_chain_saves/trial_and_session_counter.p", 'wb'))
 
     print("Ultimate count is {}".format(ultimate_counter))
-    quit()
+
 
     if True:
         abs_state_durs = pickle.load(open("multi_chain_saves/abs_state_durs.p", 'rb'))
@@ -1871,7 +2120,7 @@ if __name__ == "__main__":
         plt.xlim(0, abs_state_durs.max())
         plt.tight_layout()
         plt.savefig("./summary_figures/sessions_in_stages.png", dpi=300)
-        plt.show()
+        plt.close()
 
         # compute all the needed correlations
         print("Correlations")
@@ -1892,6 +2141,23 @@ if __name__ == "__main__":
         print(pearsonr(abs_state_durs.sum(1), bias_sessions))
         # (-0.13408773681373676, 0.14598537551184568)
 
+        # 31.12.24
+        # print(pearsonr(abs_state_durs[:, 0], abs_state_durs[:, 1]))
+        # (0.2096921108928549, 0.015027324108210532)
+        # print(pearsonr(abs_state_durs[:, 0], abs_state_durs[:, 2]))
+        # # (0.03537942172848045, 0.684862647688938)
+        # print(pearsonr(abs_state_durs[:, 1], abs_state_durs[:, 2]))
+        # # (0.1446744640125377, 0.09535054971185515)
+        # print(pearsonr(abs_state_durs[:, 0], bias_sessions))
+        # # (-0.06241808976087822, 0.47370029857492496)
+        # print(pearsonr(abs_state_durs[:, 1], bias_sessions))
+        # # (-0.004761837777311942, 0.9564522442975754)
+        # print(pearsonr(abs_state_durs[:, 2], bias_sessions))
+        # # (-0.19989942279657802, 0.020572005514517072)
+        # print(pearsonr(abs_state_durs.sum(1), bias_sessions))
+        # # (-0.19178437238090368, 0.02642455352734737)
+
+
         # simplex plotting, figure 5
         from simplex_plot import plotSimplex
         plotSimplex(np.array(abs_state_durs), facecolors='none', edgecolors='k', linewidths=1.5, show=True, vertexcolors=[type2color[i] for i in range(3)], vertexlabels=['Stage 1', 'Stage 2', 'Stage 3'])
@@ -1905,6 +2171,21 @@ if __name__ == "__main__":
         plt.xlabel('# of sessions', size=40)
         plt.tight_layout()
         plt.savefig("./summary_figures/session_num_hist.png", dpi=300, transparent=True)
+        plt.show()
+
+        # simplex inset 2?
+        captured_states = pickle.load(open("captured_states.p", 'rb'))
+        num_states = np.array([x for _, _, x, _ in captured_states])
+
+        plt.hist(num_states, color='grey', bins=np.arange(1, 16), align='left')
+        plt.xlim(0.5, 15.5)
+        sns.despine()
+        plt.xticks(size=26)
+        plt.yticks(size=26)
+        plt.ylabel("# of mice", size=40)
+        plt.xlabel('# of states', size=40)
+        plt.tight_layout()
+        plt.savefig("./summary_figures/state_num_hist.png", dpi=300, transparent=True)
         plt.show()
 
     if True:  # code for figure 7
@@ -1924,14 +2205,14 @@ if __name__ == "__main__":
             ax2.bar(np.linspace(0, 1, in_sess_appear_n_bins + 1)[:-1], in_sess_appear[i], bottom=in_sess_appear[:i].sum(0), align='edge', width=1/in_sess_appear_n_bins, color=type2color[i])
 
         # zoom-in / limit the view to different portions of the data
-        ax.set_ylim(280, 400)
+        ax.set_ylim(350, 440)
         ax2.set_ylim(0, 35)
 
-        ax.set_yticks([300, 350])
-        ax.set_yticklabels([300, 350])
-        ax2.set_yticks([0, 8, 16, 24])
+        ax.set_yticks([350, 400])
+        ax.set_yticklabels([350, 400])
+        ax2.set_yticks([0, 10, 20, 30])
         ax2.set_xticks([0, .25, .5, .75, 1])
-        ax2.set_yticklabels([0, 8, 16, 24])
+        ax2.set_yticklabels([0, 10, 20, 30])
         ax2.set_xticklabels([0, .25, .5, .75, 1])
 
         # hide the spines between ax and ax2
@@ -1977,12 +2258,12 @@ if __name__ == "__main__":
         # axins.spines['left'].set_visible(False)
         axins.spines['top'].set_visible(False)
         # axins.spines['bottom'].set_visible(False)
-        axins.set_yticks([0, 100, 200, 300])
-        axins.set_yticklabels([0, 100, 200, 300])
+        axins.set_yticks([0, 100, 200, 300, 400])
+        axins.set_yticklabels([0, 100, 200, 300, 400])
         axins.set_xticks([])
         axins.tick_params(axis='y', labelsize=20)
 
-        ax.annotate("", xytext=(0.09, 305), xy=(0.35, 324), xycoords='data', arrowprops=dict(facecolor='black', headwidth=10, headlength=10, width=2))#, arrowprops=dict(arrowstyle="-|>,head_width=50,head_length=50", color='k'))
+        ax.annotate("", xytext=(0.09, 355), xy=(0.35, 374), xycoords='data', arrowprops=dict(facecolor='black', headwidth=10, headlength=10, width=2))#, arrowprops=dict(arrowstyle="-|>,head_width=50,head_length=50", color='k'))
 
         plt.tight_layout()
         plt.savefig('./summary_figures/states in sessions', dpi=300)

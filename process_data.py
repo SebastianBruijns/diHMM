@@ -56,8 +56,11 @@ fit_type = ['prebias', 'bias', 'all', 'prebias_plus', 'zoe_style'][0]
 n_regressors = 4
 exponential_decay = 0.25
 
-compute_wsls = True
+compute_wsls = False
 add_on = "" if not compute_wsls else "_wsls"
+
+compute_exp = False
+add_on += "" if compute_exp else "_no_exp"
 
 num_sess = []
 # if this level of exponential decay has no folder, make it
@@ -77,6 +80,8 @@ for subject in subjects:
     from_session = info_dict['bias_start'] if fit_type in ['bias', 'zoe_style'] else 0
     num_sess.append(till_session - from_session)
     print(subject, till_session - from_session)
+
+    subject_timeouts = {}
 
     for j in range(from_session, till_session):
         # load the _fit_info file
@@ -103,6 +108,22 @@ for subject in subjects:
         new_prev_ans = data[:, 1].copy()
         new_prev_ans -= 1  # go from 0 2 encoding to -1 1 encoding
         new_prev_ans = smooth_exp_array(new_prev_ans, exponential_decay)
+
+        # note down timeout responses for predictive checks
+        subject_timeouts[j] = {}
+        if np.sum(~mask) > 0:
+            print(np.sum(~mask), j)
+            actual_trial_counter = 0
+            skip_counter = 0
+            for m in mask:
+                if m:
+                    if skip_counter > 0:
+                        subject_timeouts[j][actual_trial_counter] = skip_counter
+                        skip_counter = 0
+                    actual_trial_counter += 1
+                else:
+                    skip_counter += 1
+            
         mega_data[:, 3] = new_prev_ans[mask]
 
         # bias
@@ -124,8 +145,13 @@ for subject in subjects:
 
     # turn the list of sessions into a dataframe with correct column names
     all_sessions = np.vstack(all_sessions)
-    cols = ['session', 'right_contrast', 'left_contrast', 'prev_ans', 'bias', 'choice'] if not compute_wsls else ['session', 'right_contrast', 'left_contrast', 'prev_ans', 'bias', 'wsls', 'choice']
+    cols = ['session', 'right_contrast', 'left_contrast', 'prev_ans', 'bias'] + ['wsls'] * compute_wsls + ['choice']
     df = pd.DataFrame(all_sessions, columns=cols)
+
+    # if not compute_exp, remove the exponential decay column
+    if not compute_exp:
+        df = df.drop(columns=['prev_ans'])
 
     # save the dataframe as csv
     df.to_csv("./summarised_sessions/{}{}/{}_{}_fit_info.csv".format(str(exponential_decay).replace('.', '_'), add_on, subject, fit_type), index=False)
+    pickle.dump(subject_timeouts, open(f"./session_data/subject_timeout_{subject}", 'wb'))

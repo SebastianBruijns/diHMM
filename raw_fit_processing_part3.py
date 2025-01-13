@@ -11,7 +11,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "16" # export NUMEXPR_NUM_THREADS=6
 from dyn_glm_chain_analysis import MCMC_result_list
 from dyn_glm_chain_analysis import state_development
 import matplotlib as mpl
-mpl.use('Agg')
+# mpl.use('Agg')
 import matplotlib.pyplot as plt
 import sys
 import pickle
@@ -21,32 +21,37 @@ import scipy.cluster.hierarchy as hc
 fit_type = ['prebias', 'bias', 'all', 'prebias_plus', 'zoe_style'][0]
 file_prefix = ['.', '/usr/src/app'][0]
 
-subjects = ['DY_013']
+subjects = ['KS014']
 subjects = [subjects[int(sys.argv[1])]]
 fit_variance = [0.04][0]
 
-def state_set_and_plot(test, mode_prefix, subject, fit_type):
+def state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices, consistencies):
     # plot the clutering and summary of the fit
-    mode_indices = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
-    consistencies = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
     session_bounds = list(np.cumsum([len(s) for s in test.results[0].models[-1].stateseqs]))
 
     consistencies /= consistencies[0, 0]
-    linkage = hc.linkage(consistencies[0, 0] - consistencies[np.triu_indices(consistencies.shape[0], k=1)], method='complete')
+    # linkage = hc.linkage(consistencies[0, 0] - consistencies[np.triu_indices(consistencies.shape[0], k=1)], method='complete')
+    # pickle.dump(linkage, open(file_prefix + "/temp_linkage_{}.p".format(subject), 'wb'))
+    linkage = pickle.load(open(file_prefix + "/temp_linkage_{}.p".format(subject), 'rb'))
 
     session_bounds = list(np.cumsum([len(s) for s in test.results[0].models[-1].stateseqs]))
 
     plot_criterion = 0.95
+
+    # hierarchical clustering of trials into states
     a = hc.fcluster(linkage, plot_criterion, criterion='distance')
+    
     b, c = np.unique(a, return_counts=1)
     state_sets = []
     for x, y in zip(b, c):
         state_sets.append(np.where(a == x)[0])
     print("dumping state set")
     pickle.dump(state_sets, open(file_prefix + "/multi_chain_saves/{}state_sets_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'))
-    state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save_append='_{}{}_fitvar_{}'.format(mode_prefix, plot_criterion, fit_variance), show=True, separate_pmf=True, type_coloring=True)
+    
+    # plot the ultimate result
+    print('temp removal')
+    # state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save_append='_{}{}_fitvar_{}'.format(mode_prefix, plot_criterion, fit_variance), show=True, separate_pmf=True, type_coloring=True)
 
-    return
 
     # code for visualising the consistency matrix and state assignments
     fig, ax = plt.subplots(ncols=5, sharey=True, gridspec_kw={'width_ratios': [10, 1, 1, 1, 1]}, figsize=(13, 8))
@@ -90,7 +95,7 @@ def state_set_and_plot(test, mode_prefix, subject, fit_type):
 
     plt.tight_layout()
     plt.savefig("figures/{}clustered_trials_{}_{}".format(mode_prefix, subject, 'criteria comp').replace('.', '_'))
-    plt.close()
+    plt.show()
 
 print(subjects)
 for subject in subjects:
@@ -99,9 +104,12 @@ for subject in subjects:
 
     test = pickle.load(open(file_prefix + "/multi_chain_saves/canonical_result_{}_{}_var_{}.p".format(subject, fit_type, fit_variance), 'rb'))
     mode_indices = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
-    consistencies = test.consistency_rsa(indices=mode_indices)  # compute consistency matrix of samples
-    pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
-    state_set_and_plot(test, mode_prefix, subject, fit_type)
+    # consistencies = test.consistency_rsa(indices=mode_indices)  # compute consistency matrix of samples
+    # pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
+    consistencies = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
+    state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices=mode_indices, consistencies=consistencies)
+
+    quit()
 
     # repeat for other modes, if they exist
     mode_prefix = 'second_'
@@ -109,11 +117,11 @@ for subject in subjects:
         mode_indices = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
         consistencies = test.consistency_rsa(indices=mode_indices, mode_prefix=mode_prefix)
         pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
-        state_set_and_plot(test, mode_prefix, subject, fit_type)
+        state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices=mode_indices, consistencies=consistencies)
 
     mode_prefix = 'third_'
     if os.path.isfile(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance)):
         mode_indices = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
         consistencies = test.consistency_rsa(indices=mode_indices, mode_prefix=mode_prefix)
         pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
-        state_set_and_plot(test, mode_prefix, subject, fit_type)
+        state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices=mode_indices, consistencies=consistencies)
