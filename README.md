@@ -34,7 +34,7 @@ The data for this analysis is downloaded with the script (note that you will nee
 
 ## Running
 
-``dynamic_GLMiHMM_fit.py`` fits the diHMM model to the specified subjects (depending on the data size this can take a substantial amount of time, for our example mouse it takes about 24 hours, running on 16 cores in parallel) -> produces [subject_name]_fittype_prebias_var_0_04_[seed]_[id] files and a fit_info dictionary containing the fit settings
+``dynamic_GLMiHMM_fit.py`` fits the diHMM model to the specified subjects (depending on the data size this can take a substantial amount of time, for our example mouse it takes about 24 hours, running on 16 cores in parallel) -> produces `[subject_name]_fittype_prebias_var_0_04_[seed]_[id] files and a fit_info dictionary containing the fit settings
 Supply this script with the number of the chain as an argument, i.e. for a typical run these are the numbers 0-15
 
 The following 3 scripts process the MCMC-chains. They are split, because we usually run 1 and 3 on a cluster, as they are computationally somewhat intense, but 2, where one selects the samples to analyse, is run locally to view and interact with the results (the first and third script still run within around 1 hour on a desktop machine, script two runs in less than 5 minutes).\
@@ -43,9 +43,9 @@ The following 3 scripts process the MCMC-chains. They are split, because we usua
 ``raw_fit_processing_part3.py`` specify argument (0 for a single mouse)
 
 These will produce, in sequence, the following intermediate files: \
-``canonical_[infos/result]_[subject]_prebias_var_0_04`` files \
-updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode_indices_[subject]_prebias_var_0_04`` files \
-``state_sets_[subject]_prebias_var_0_04.p`` and ``mode_consistencies_[subject]_prebias_var_0_04.p`` files
+- ``canonical_[infos/result]_[subject]_prebias_var_0_04`` files \
+- updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode_indices_[subject]_prebias_var_0_04`` files \
+- ``state_sets_[subject]_prebias_var_0_04.p`` and ``mode_consistencies_[subject]_prebias_var_0_04.p`` files
 
 
 ``dyn_glm_chain_analysis.py`` goes through all the processed results, plotting overviews (figure 2 and 3), and collecting summaries of the data to process further. Also plots figure 5 and 7
@@ -56,5 +56,5 @@ updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode
 
 ## Example data set
 
-We directly provide the data of example mouse KS014, as well as intermediate results for ease of processing. Some files are larger, and are stored here, drop them into the `multi_chain_saves` folder: https://nextcloud.tuebingen.mpg.de/index.php/s/eZD9WskBfme9gDj
+We directly provide the data of example mouse KS014, as well as intermediate results for ease of processing, checkout the branch "paper_example". Some files are larger, and are stored here, drop them into the `multi_chain_saves` folder: https://nextcloud.tuebingen.mpg.de/index.php/s/eZD9WskBfme9gDj
 The chains (output of ``dynamic_GLMiHMM_fit.py``) are not provided at the moment, as these files are too large, as a consequence ``raw_fit_processing_part1.py`` cannot be run directly.
