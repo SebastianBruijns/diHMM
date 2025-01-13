@@ -1,6 +1,8 @@
 """
     Compute which trials go into the same state across samples how often.
     This last bit of info is then also used to create the first plots.
+
+    Provide 
 """
 import os
 os.environ["OMP_NUM_THREADS"] = "16" # export OMP_NUM_THREADS=4
@@ -30,9 +32,7 @@ def state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices, consi
     session_bounds = list(np.cumsum([len(s) for s in test.results[0].models[-1].stateseqs]))
 
     consistencies /= consistencies[0, 0]
-    # linkage = hc.linkage(consistencies[0, 0] - consistencies[np.triu_indices(consistencies.shape[0], k=1)], method='complete')
-    # pickle.dump(linkage, open(file_prefix + "/temp_linkage_{}.p".format(subject), 'wb'))
-    linkage = pickle.load(open(file_prefix + "/temp_linkage_{}.p".format(subject), 'rb'))
+    linkage = hc.linkage(consistencies[0, 0] - consistencies[np.triu_indices(consistencies.shape[0], k=1)], method='complete')
 
     session_bounds = list(np.cumsum([len(s) for s in test.results[0].models[-1].stateseqs]))
 
@@ -49,7 +49,6 @@ def state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices, consi
     pickle.dump(state_sets, open(file_prefix + "/multi_chain_saves/{}state_sets_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'))
     
     # plot the ultimate result
-    print('temp removal')
     state_development(test, [s for s in state_sets if len(s) > 40], mode_indices, save_append='_{}{}_fitvar_{}'.format(mode_prefix, plot_criterion, fit_variance), show=True, separate_pmf=True, type_coloring=True)
 
     return
@@ -109,7 +108,7 @@ for subject in subjects:
     consistencies = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
     state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices=mode_indices, consistencies=consistencies)
 
-    quit()
+    quit() # remove to cluster other modes as well
 
     # repeat for other modes, if they exist
     mode_prefix = 'second_'
