@@ -131,9 +131,6 @@ def threshold_search(xy, z, test, mode_prefix, subject, fit_type):
         factor = int(input())
         mode_indices = mode_indices[::factor]
         print(mode_indices.shape)
-    if subject not in loading_info:
-        loading_info[subject] = {}
-    loading_info[subject]['mode prob level'] = prob_level
 
     pickle.dump(mode_indices, open("multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'))
     # rest is on the cluster now
@@ -158,12 +155,6 @@ def conditions_fulfilled(z, xy, conds):
     return works
 
 fit_type = ['prebias', 'bias', 'all', 'prebias_plus', 'zoe_style'][0]
-if fit_type == 'bias':
-    loading_info = json.load(open("canonical_infos_bias_fitvar_{}.json".format(fit_variance), 'r'))
-elif fit_type == 'prebias':
-    loading_info = json.load(open("canonical_infos_fitvar_{}.json".format(fit_variance), 'r'))
-elif fit_type == 'all':
-    loading_info = json.load(open("canonical_infos_all_fitvar_{}.json".format(fit_variance), 'r'))
 
 for subject in subjects:
     try:

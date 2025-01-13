@@ -1886,7 +1886,7 @@ if __name__ == "__main__":
         # pickle.dump(session_dict, open("sofiya_data/session_dict_{}".format(subject), 'wb'))
 
         # Test KS014's session number 12 for difference between state 5 and 6
-        if subject == 'KS014' and False:
+        if subject == 'KS014' and True:
 
             # dur dist plotting - maybe I shouldn't average over parameters?
             # from scipy.stats import nbinom

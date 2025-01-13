@@ -103,9 +103,8 @@ for subject in subjects:
 
     test = pickle.load(open(file_prefix + "/multi_chain_saves/canonical_result_{}_{}_var_{}.p".format(subject, fit_type, fit_variance), 'rb'))
     mode_indices = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_indices_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
-    # consistencies = test.consistency_rsa(indices=mode_indices)  # compute consistency matrix of samples
-    # pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
-    consistencies = pickle.load(open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'rb'))
+    consistencies = test.consistency_rsa(indices=mode_indices)  # compute consistency matrix of samples
+    pickle.dump(consistencies, open(file_prefix + "/multi_chain_saves/{}mode_consistencies_{}_{}_var_{}.p".format(mode_prefix, subject, fit_type, fit_variance), 'wb'), protocol=4)
     state_set_and_plot(test, mode_prefix, subject, fit_type, mode_indices=mode_indices, consistencies=consistencies)
 
     quit() # remove to cluster other modes as well
