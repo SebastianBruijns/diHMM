@@ -6,7 +6,7 @@ Learning to exploit the contingencies of a complex experiment is not an easy tas
 
 ## Installation
 
-This code relies on the installation of two packages, which are custom extensions of existing packages, as described there: \
+This code relies on the installation of two packages, which are custom extensions of existing packages, as described there (these will be installed with the rest of the needed packages in the next step): \
 https://github.com/SebastianBruijns/sab_pybasicbayes \
 https://github.com/SebastianBruijns/sab_pyhsmm
 
