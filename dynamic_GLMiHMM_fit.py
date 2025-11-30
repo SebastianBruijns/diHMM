@@ -96,7 +96,6 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
     params['dur'] = 'no'
 
     params['cross_val'] = True
-    params['cross_val_type'] = ['normal', 'lenca'][0]
     params['cross_val_fold'] = 10
     params['CROSS_VAL_SEED'] = 4  # Do not change this, it's 4
 
@@ -186,19 +185,9 @@ for loop_count_i, (subject, cv_num, seed) in enumerate(zip(subjects, cv_nums, se
         data_save.append(session_data[:, 1:].copy())
 
         if params['cross_val']:
-            if params['cross_val_type'] == 'normal':
-                test_sets = np.tile(np.arange(params['cross_val_fold']), session_data.shape[0] // params['cross_val_fold'] + 1)[:session_data.shape[0]]
-                rng.shuffle(test_sets)
-                session_data[(test_sets == params['cross_val_num']).astype(bool), -1] = None
-            elif params['cross_val_type'] == 'lenca':
-                lenca_info = np.load(file_prefix + "/lenca_data/" + "{}_data_and_indices_CV_5_folds.npz".format(params['subject']))
-                trials_to_nan = lenca_info['presentTest'][params['cross_val_num']][lenca_counter:lenca_counter + session_data.shape[0]]
-                assert trials_to_nan.shape[0] == (lenca_info['sessInd'][j+1] - lenca_info['sessInd'][j])
-                lenca_counter += session_data.shape[0]
-                session_data[trials_to_nan.astype(bool), -1] = None
-            else:
-                print('Incorrectly specified crossvalidation type')
-                quit()
+            test_sets = np.tile(np.arange(params['cross_val_fold']), session_data.shape[0] // params['cross_val_fold'] + 1)[:session_data.shape[0]]
+            rng.shuffle(test_sets)
+            session_data[(test_sets == params['cross_val_num']).astype(bool), -1] = None
 
         posteriormodel.add_data(session_data[:, 1:])
 
