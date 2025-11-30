@@ -34,11 +34,13 @@ The data for this analysis is downloaded with the script (note that you will nee
 
 ## Running
 
+#### MCMC sampling
 ``dynamic_GLMiHMM_fit.py`` fits the diHMM model to the specified subjects (depending on the data size this can take a substantial amount of time, for our example mouse it takes about 24 hours, running on 16 cores in parallel). \
 It expects to read in a .csv from the specified locatin, which follows this format for its columns: "session", [regressor 1], ..., [regressor n], "choice" (regressors can have arbitrary names) \
 It produces `[subject_name]_fittype_prebias_var_0_04_[seed]_[id]` files and a fit_info dictionary containing the fit settings.
 Supply this script with the number of the chain as an argument, i.e. for a typical run these are the numbers 0-15
 
+#### MCMC processing
 The following 3 scripts process the MCMC-chains. They are split, because we usually run 1 and 3 on a cluster, as they are computationally somewhat intense, but 2, where one selects the samples to analyse, is run locally to view and interact with the results (the first and third script still run within around 1 hour on a desktop machine, script two runs in less than 5 minutes).\
 ``raw_fit_processing_part1.py``  specify argument (0 for a single mouse) \
 ``raw_fit_processing_part2.py``  \
@@ -49,7 +51,7 @@ These will produce, in sequence, the following intermediate files:
 - updates ``canonical_result_[subject]_prebias_var_0_04`` file and produces ``mode_indices_[subject]_prebias_var_0_04`` files
 - ``state_sets_[subject]_prebias_var_0_04.p`` and ``mode_consistencies_[subject]_prebias_var_0_04.p`` files
 
-
+#### Posterior analysis
 ``dyn_glm_chain_analysis.py`` goes through all the processed results, plotting overviews (figure 2 and 3), and collecting summaries of the data to process further. Also plots figure 5 and 7
 
 ``analysis_pmf.py`` plots figure 4\
