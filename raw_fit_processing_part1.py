@@ -22,10 +22,9 @@ from dyn_glm_chain_analysis import MCMC_result_list
 import sys
 
 
-fit_type = ['prebias', 'bias', 'all', 'prebias_plus', 'zoe_style'][0]
 file_prefix = ['.', '/usr/src/app'][0]  # cluster or local prefix
 data_folder = 'dynamic_GLMiHMM_crossvals'
-prethinned = None
+prethinned = None  # will try to determine whether chains where thinned already by thresholding at 2000 samples (since we usually create 4000 per sub-file)
 
 subjects = ['DY_013']
 subjects = [subjects[int(sys.argv[1])]]
@@ -33,6 +32,7 @@ subjects = [subjects[int(sys.argv[1])]]
 thinning = 25  # MCMC chain thinning, drop all but every 25th sample
 
 fit_variance = 0.04
+fit_type = 'prebias'
 
 # prepare funtions for computing R^hat
 func1 = state_num_helper(0.2)
@@ -70,7 +70,6 @@ for subject in subjects:
 
     for j, (seed, fit_num) in enumerate(zip(loading_info[subject]['seeds'], loading_info[subject]['fit_nums'])):
         print(seed)
-        # info_dict = pickle.load(open(file_prefix + "/session_data/{}_info_dict.p".format(subject), "rb"))
         samples = []
 
         mini_counter = 1 # start reading files at 1, discard first 4000 samples (first file) as burnin
@@ -107,7 +106,7 @@ for subject in subjects:
         else:
             samples = samples[::thinning]
         result = MCMC_result(samples,
-                            infos={'subject': subject}, data=pickle.load(open(file_prefix + "/{}/{}_fittype_{}_var_{}_{}_{}{}.p".format(data_folder, subject, fit_type, fit_variance, seed, fit_num, '_{}'.format(0)), "rb"))[0].datas,  # used to pass info_dict
+                            infos={'subject': subject}, data=pickle.load(open(file_prefix + "/{}/{}_fittype_{}_var_{}_{}_{}{}.p".format(data_folder, subject, fit_type, fit_variance, seed, fit_num, '_{}'.format(0)), "rb"))[0].datas,
                              sessions=fit_type, fit_variance=fit_variance,
                              dur=dur, save_id=save_id)
         results.append(result)
@@ -133,11 +132,6 @@ for subject in subjects:
     pickle.dump(chains2, open(file_prefix + "/multi_chain_saves/{}_state_num_1_fittype_{}_var_{}_{}_{}_state_num.p".format(subject, fit_type, fit_variance, seed, fit_num), 'wb'))
     pickle.dump(chains3, open(file_prefix + "/multi_chain_saves/{}_largest_state_0_fittype_{}_var_{}_{}_{}_state_num.p".format(subject, fit_type, fit_variance, seed, fit_num), 'wb'))
     pickle.dump(chains4, open(file_prefix + "/multi_chain_saves/{}_largest_state_1_fittype_{}_var_{}_{}_{}_state_num.p".format(subject, fit_type, fit_variance, seed, fit_num), 'wb'))
-
-    # R^hat tests
-    # test = MCMC_result_list([fake_result(100) for i in range(8)])
-    # test.r_hat_and_ess(return_ascending, False)
-    # test.r_hat_and_ess(return_ascending_shuffled, False)
 
     print()
     print("Checking R^hat, finding best subset of chains")
