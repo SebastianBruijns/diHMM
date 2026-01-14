@@ -31,6 +31,8 @@ pip install -r requirements_specific.txt
 *Note that to download all the animal data used for the paper, you will also need to create a separate IBL environment*
 The data for this analysis is downloaded with the script (note that you will need to get the correct password from https://int-brain-lab.github.io/iblenv/notebooks_external/data_download.html): \
 ``behavioral_state_data_easier.py``
+\
+For us, this is then processed with ``process_data.py``, to bring the data into the format expected by the fitting procedure.
 
 ## Running
 
