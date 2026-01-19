@@ -11,6 +11,7 @@ import pickle
 import json
 import re
 import warnings
+import os
 
 warnings.simplefilter(action='ignore')
 
@@ -27,6 +28,8 @@ subjects = list(set(subjects))
 data_folder = 'session_data'
 contrast_to_num = {-1.: 0, -0.5: 1, -0.25: 2, -0.125: 3, -0.0625: 4, 0: 5, 0.0625: 6, 0.125: 7, 0.25: 8, 0.5: 9, 1.: 10}
 
+os.makedirs(data_folder, exist_ok=True)
+os.makedirs('./figures/behavior/', exist_ok=True)
 
 for subject in subjects:
     trials = one.load_aggregate('subjects', subject, '_ibl_subjectTrials.table')

@@ -43,6 +43,10 @@ file_prefix = '.'
 data_folder = file_prefix + "/summarised_sessions/0_25/"
 output_folder = file_prefix + "/dynamic_GLMiHMM_crossvals/"
 output_infos = output_folder + "infos/"
+os.makedirs(output_folder, exist_ok=True)
+os.makedirs(output_infos, exist_ok=True)
+
+
 subjects = ['KS014']
 
 # creat lists of seeds (and cross-validation numbers if needed) for the subjects, we used 16 chains per subject
